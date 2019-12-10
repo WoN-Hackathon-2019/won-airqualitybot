@@ -16,6 +16,7 @@ import won.bot.framework.eventbot.event.Event;
 import won.bot.framework.eventbot.event.impl.command.connect.ConnectCommandEvent;
 import won.bot.framework.eventbot.event.impl.command.connect.ConnectCommandResultEvent;
 import won.bot.framework.eventbot.event.impl.command.connect.ConnectCommandSuccessEvent;
+import won.bot.framework.eventbot.event.impl.lifecycle.ActEvent;
 import won.bot.framework.eventbot.event.impl.wonmessage.CloseFromOtherAtomEvent;
 import won.bot.framework.eventbot.event.impl.wonmessage.ConnectFromOtherAtomEvent;
 import won.bot.framework.eventbot.filter.impl.AtomUriInNamedListFilter;
@@ -68,11 +69,6 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
     @Override
     protected void initializeEventListeners() {
         OpenAqApi openAqApi = new OpenAqApi(this.openaqApiUrl);
-        List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
-        System.out.println("Fetched Measurements:");
-        for (LocationMeasurements measurements : latestMeasurements) {
-            System.out.println(measurements);
-        }
 
         EventListenerContext ctx = getEventListenerContext();
         if (!(getBotContextWrapper() instanceof AirQualityBotContextWrapper)) {
@@ -150,6 +146,18 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
                 logger.info("Remove a closed connection " + senderSocketUri + " -> " + targetSocketUri
                         + " from the botcontext ");
                 botContextWrapper.removeConnectedSocket(senderSocketUri, targetSocketUri);
+            }
+        });
+        bus.subscribe(ActEvent.class, new BaseEventBotAction(ctx) {
+            @Override
+            protected void doRun(Event event, EventListener eventListener) throws Exception {
+                logger.info("Fetching new data");
+                List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
+                System.out.println("Fetched Measurements:");
+                for (LocationMeasurements measurements : latestMeasurements) {
+                    System.out.println(measurements);
+                }
+                logger.info("Done fetching");
             }
         });
     }
