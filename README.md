@@ -23,7 +23,7 @@ java -jar target/bot.jar
 Now go to [What's new](https://hackathon.matchat.org/owner/#!/overview) to find your bot, connect and [create an atom](https://hackathon.matchat.org/owner/#!/create) to see the bot in action.
 
 ### In Intellij Idea
-1. Create a run configuration for the class `won.bot.skeleton.SkeletonBotApp`
+1. Create a run configuration for the class `won.bot.airquality.SkeletonBotApp`
 2. Add the environment variables
 
   * `WON_NODE_URI` pointing to your node uri (e.g. `https://hackathonnode.matchat.org/won` without quotes)

@@ -1,11 +1,8 @@
-package won.bot.skeleton.impl;
+package won.bot.airquality.impl;
 
-import java.lang.invoke.MethodHandles;
-import java.net.URI;
-
+import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
@@ -27,14 +24,28 @@ import won.bot.framework.extensions.matcher.MatcherExtension;
 import won.bot.framework.extensions.matcher.MatcherExtensionAtomCreatedEvent;
 import won.bot.framework.extensions.serviceatom.ServiceAtomBehaviour;
 import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
-import won.bot.skeleton.action.MatcherExtensionAtomCreatedAction;
-import won.bot.skeleton.context.SkeletonBotContextWrapper;
+import won.bot.airquality.action.MatcherExtensionAtomCreatedAction;
+import won.bot.airquality.context.AirQualityBotContextWrapper;
 
-public class SkeletonBot extends EventBot implements MatcherExtension, ServiceAtomExtension {
+import java.lang.invoke.MethodHandles;
+import java.net.URI;
+
+public class AirQualityBot extends EventBot implements MatcherExtension, ServiceAtomExtension {
+
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
     private int registrationMatcherRetryInterval;
     private MatcherBehaviour matcherBehaviour;
     private ServiceAtomBehaviour serviceAtomBehaviour;
+
+    @Setter
+    private String jsonURL;
+    @Setter
+    private int updateTime;
+    @Setter
+    private int publishTime;
+    @Setter
+    private boolean createAllInOne;
 
     // bean setter, used by spring
     public void setRegistrationMatcherRetryInterval(final int registrationMatcherRetryInterval) {
@@ -54,13 +65,13 @@ public class SkeletonBot extends EventBot implements MatcherExtension, ServiceAt
     @Override
     protected void initializeEventListeners() {
         EventListenerContext ctx = getEventListenerContext();
-        if (!(getBotContextWrapper() instanceof SkeletonBotContextWrapper)) {
+        if (!(getBotContextWrapper() instanceof AirQualityBotContextWrapper)) {
             logger.error(getBotContextWrapper().getBotName() + " does not work without a SkeletonBotContextWrapper");
             throw new IllegalStateException(
-                            getBotContextWrapper().getBotName() + " does not work without a SkeletonBotContextWrapper");
+                    getBotContextWrapper().getBotName() + " does not work without a SkeletonBotContextWrapper");
         }
         EventBus bus = getEventBus();
-        SkeletonBotContextWrapper botContextWrapper = (SkeletonBotContextWrapper) getBotContextWrapper();
+        AirQualityBotContextWrapper botContextWrapper = (AirQualityBotContextWrapper) getBotContextWrapper();
         // register listeners for event.impl.command events used to tell the bot to send
         // messages
         ExecuteWonMessageCommandBehaviour wonMessageCommandBehaviour = new ExecuteWonMessageCommandBehaviour(ctx);
@@ -76,7 +87,7 @@ public class SkeletonBot extends EventBot implements MatcherExtension, ServiceAt
         matcherBehaviour.activate();
         // create filters to determine which atoms the bot should react to
         NotFilter noOwnAtoms = new NotFilter(
-                        new AtomUriInNamedListFilter(ctx, ctx.getBotContextWrapper().getAtomCreateListName()));
+                new AtomUriInNamedListFilter(ctx, ctx.getBotContextWrapper().getAtomCreateListName()));
         // filter to prevent reacting to serviceAtom<->ownedAtom events;
         NotFilter noInternalServiceAtomEventFilter = getNoInternalServiceAtomEventFilter();
         bus.subscribe(ConnectFromOtherAtomEvent.class, noInternalServiceAtomEventFilter, new BaseEventBotAction(ctx) {
@@ -87,30 +98,30 @@ public class SkeletonBot extends EventBot implements MatcherExtension, ServiceAt
                 try {
                     String message = "Hello i am the BotSkeletor i will send you a message everytime an atom is created...";
                     final ConnectCommandEvent connectCommandEvent = new ConnectCommandEvent(
-                                    connectFromOtherAtomEvent.getRecipientSocket(),
-                                    connectFromOtherAtomEvent.getSenderSocket(), message);
+                            connectFromOtherAtomEvent.getRecipientSocket(),
+                            connectFromOtherAtomEvent.getSenderSocket(), message);
                     ctx.getEventBus().subscribe(ConnectCommandSuccessEvent.class, new ActionOnFirstEventListener(ctx,
-                                    new CommandResultFilter(connectCommandEvent), new BaseEventBotAction(ctx) {
-                                        @Override
-                                        protected void doRun(Event event, EventListener executingListener) {
-                                            ConnectCommandResultEvent connectionMessageCommandResultEvent = (ConnectCommandResultEvent) event;
-                                            if (!connectionMessageCommandResultEvent.isSuccess()) {
-                                                logger.error("Failure when trying to open a received Request: "
-                                                                + connectionMessageCommandResultEvent.getMessage());
-                                            } else {
-                                                logger.info(
-                                                                "Add an established connection " +
-                                                                                connectCommandEvent.getLocalSocket()
-                                                                                + " -> "
-                                                                                + connectCommandEvent.getTargetSocket()
-                                                                                +
-                                                                                " to the botcontext ");
-                                                botContextWrapper.addConnectedSocket(
-                                                                connectCommandEvent.getLocalSocket(),
-                                                                connectCommandEvent.getTargetSocket());
-                                            }
-                                        }
-                                    }));
+                            new CommandResultFilter(connectCommandEvent), new BaseEventBotAction(ctx) {
+                        @Override
+                        protected void doRun(Event event, EventListener executingListener) {
+                            ConnectCommandResultEvent connectionMessageCommandResultEvent = (ConnectCommandResultEvent) event;
+                            if (!connectionMessageCommandResultEvent.isSuccess()) {
+                                logger.error("Failure when trying to open a received Request: "
+                                        + connectionMessageCommandResultEvent.getMessage());
+                            } else {
+                                logger.info(
+                                        "Add an established connection " +
+                                                connectCommandEvent.getLocalSocket()
+                                                + " -> "
+                                                + connectCommandEvent.getTargetSocket()
+                                                +
+                                                " to the botcontext ");
+                                botContextWrapper.addConnectedSocket(
+                                        connectCommandEvent.getLocalSocket(),
+                                        connectCommandEvent.getTargetSocket());
+                            }
+                        }
+                    }));
                     ctx.getEventBus().publish(connectCommandEvent);
                 } catch (Exception te) {
                     logger.error(te.getMessage(), te);
@@ -127,7 +138,7 @@ public class SkeletonBot extends EventBot implements MatcherExtension, ServiceAt
                 URI targetSocketUri = closeFromOtherAtomEvent.getSocketURI();
                 URI senderSocketUri = closeFromOtherAtomEvent.getTargetSocketURI();
                 logger.info("Remove a closed connection " + senderSocketUri + " -> " + targetSocketUri
-                                + " from the botcontext ");
+                        + " from the botcontext ");
                 botContextWrapper.removeConnectedSocket(senderSocketUri, targetSocketUri);
             }
         });

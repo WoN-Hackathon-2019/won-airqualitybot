@@ -18,7 +18,7 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
         http://www.springframework.org/schema/beans/spring-beans.xsd">
-    <bean id="echoBot" class="won.bot.skeleton.impl.SkeletonBot">
+    <bean id="echoBot" class="won.bot.airquality.impl.AirQualityBot">
         <property name="taskScheduler" ref="taskScheduler"/>
         <property name="botContextWrapper" ref="botContextWrapper"/>
         <property name="atomProducer">
@@ -32,6 +32,11 @@
         <property name="matcherProtocolMatcherService" ref="matcherProtocolMatcherServiceJMSBased"/>
         <property name="registrationMatcherRetryInterval" value="5000"/>
 
+        <property name="jsonURL" value="${openaq.apiURL}"/>
+        <property name ="updateTime" value="${openaq.updateTime}"/>
+        <property name ="publishTime" value ="${openaq.publishTime}"/>
+        <property name ="createAllInOne" value ="${openaq.createAllInOne}"/>
+
         <property name="trigger">
             <bean class="org.springframework.scheduling.support.PeriodicTrigger">
                 <constructor-arg name="period" value="2000"/>
@@ -42,7 +47,7 @@
         </property>
     </bean>
 
-    <bean id="botContextWrapper" class="won.bot.skeleton.context.SkeletonBotContextWrapper">
+    <bean id="botContextWrapper" class="won.bot.airquality.context.AirQualityBotContextWrapper">
         <constructor-arg name="botContext" ref="${botContext.impl}"/>
         <constructor-arg name="botName" value="${bot.name}"/>
     </bean>

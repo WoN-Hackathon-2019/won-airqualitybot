@@ -1,4 +1,4 @@
-package won.bot.skeleton.context;
+package won.bot.airquality.context;
 
 import won.bot.framework.bot.context.BotContext;
 import won.bot.framework.extensions.serviceatom.ServiceAtomEnabledBotContextWrapper;
@@ -6,10 +6,11 @@ import won.bot.framework.extensions.serviceatom.ServiceAtomEnabledBotContextWrap
 import java.net.URI;
 import java.util.*;
 
-public class SkeletonBotContextWrapper extends ServiceAtomEnabledBotContextWrapper {
+public class AirQualityBotContextWrapper extends ServiceAtomEnabledBotContextWrapper {
+
     private final String connectedSocketsMap;
 
-    public SkeletonBotContextWrapper(BotContext botContext, String botName) {
+    public AirQualityBotContextWrapper(BotContext botContext, String botName) {
         super(botContext, botName);
         this.connectedSocketsMap = botName + ":connectedSocketsMap";
     }
@@ -18,10 +19,10 @@ public class SkeletonBotContextWrapper extends ServiceAtomEnabledBotContextWrapp
         Map<String, List<Object>> connectedSockets = getBotContext().loadListMap(connectedSocketsMap);
         Map<URI, Set<URI>> connectedSocketsMapSet = new HashMap<>(connectedSockets.size());
 
-        for(Map.Entry<String, List<Object>> entry : connectedSockets.entrySet()) {
+        for (Map.Entry<String, List<Object>> entry : connectedSockets.entrySet()) {
             URI senderSocket = URI.create(entry.getKey());
             Set<URI> targetSocketsSet = new HashSet<>(entry.getValue().size());
-            for(Object o : entry.getValue()) {
+            for (Object o : entry.getValue()) {
                 targetSocketsSet.add((URI) o);
             }
             connectedSocketsMapSet.put(senderSocket, targetSocketsSet);
