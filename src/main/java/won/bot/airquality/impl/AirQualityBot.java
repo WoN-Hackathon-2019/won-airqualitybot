@@ -4,8 +4,8 @@ import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import won.bot.airquality.action.MatcherExtensionAtomCreatedAction;
+import won.bot.airquality.action.UpdateAirQualityAction;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
-import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
@@ -32,7 +32,6 @@ import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
-import java.util.List;
 
 public class AirQualityBot extends EventBot implements MatcherExtension, ServiceAtomExtension {
 
@@ -148,17 +147,6 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
                 botContextWrapper.removeConnectedSocket(senderSocketUri, targetSocketUri);
             }
         });
-        bus.subscribe(ActEvent.class, new BaseEventBotAction(ctx) {
-            @Override
-            protected void doRun(Event event, EventListener eventListener) throws Exception {
-                logger.info("Fetching new data");
-                List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
-                System.out.println("Fetched Measurements:");
-                for (LocationMeasurements measurements : latestMeasurements) {
-                    System.out.println(measurements);
-                }
-                logger.info("Done fetching");
-            }
-        });
+        bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi));
     }
 }
