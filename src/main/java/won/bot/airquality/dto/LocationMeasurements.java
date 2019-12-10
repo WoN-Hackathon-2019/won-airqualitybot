@@ -18,4 +18,14 @@ public class LocationMeasurements {
     private String country;
 
     private List<Measurement> measurements;
+
+    @Override
+    public String toString() {
+        return "LocationMeasurements{" +
+                "location='" + location + '\'' +
+                ", city='" + city + '\'' +
+                ", country='" + country + '\'' +
+                ", measurements=" + measurements +
+                '}';
+    }
 }

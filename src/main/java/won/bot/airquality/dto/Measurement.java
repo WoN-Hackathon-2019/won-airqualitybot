@@ -14,4 +14,13 @@ public class Measurement {
     private Double value;
 
     private String unit;
+
+    @Override
+    public String toString() {
+        return "Measurement{" +
+                "parameter='" + parameter + '\'' +
+                ", value=" + value +
+                ", unit='" + unit + '\'' +
+                '}';
+    }
 }

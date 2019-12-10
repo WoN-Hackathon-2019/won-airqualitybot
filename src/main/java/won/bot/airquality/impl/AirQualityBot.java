@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import won.bot.airquality.action.MatcherExtensionAtomCreatedAction;
 import won.bot.airquality.action.UpdateAirQualityAction;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
+import won.bot.airquality.dto.LocationMeasurements;
+import won.bot.airquality.dto.Parameter;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
@@ -32,6 +34,7 @@ import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
+import java.util.List;
 
 public class AirQualityBot extends EventBot implements MatcherExtension, ServiceAtomExtension {
 
@@ -68,28 +71,33 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
     @Override
     protected void initializeEventListeners() {
         OpenAqApi openAqApi = new OpenAqApi(this.openaqApiUrl);
+        fetchAndPrintData(openAqApi);
 
         EventListenerContext ctx = getEventListenerContext();
         if (!(getBotContextWrapper() instanceof AirQualityBotContextWrapper)) {
-            logger.error(getBotContextWrapper().getBotName() + " does not work without a SkeletonBotContextWrapper");
+            logger.error(getBotContextWrapper().getBotName() + " does not work without a AirQualityBotContextWrapper");
             throw new IllegalStateException(
-                    getBotContextWrapper().getBotName() + " does not work without a SkeletonBotContextWrapper");
+                    getBotContextWrapper().getBotName() + " does not work without a AirQualityBotContextWrapper");
         }
         EventBus bus = getEventBus();
         AirQualityBotContextWrapper botContextWrapper = (AirQualityBotContextWrapper) getBotContextWrapper();
+
         // register listeners for event.impl.command events used to tell the bot to send
         // messages
         ExecuteWonMessageCommandBehaviour wonMessageCommandBehaviour = new ExecuteWonMessageCommandBehaviour(ctx);
         wonMessageCommandBehaviour.activate();
+
         // activate ServiceAtomBehaviour
         serviceAtomBehaviour = new ServiceAtomBehaviour(ctx);
         serviceAtomBehaviour.activate();
+
         // set up matching extension
         // as this is an extension, it can be activated and deactivated as needed
         // if activated, a MatcherExtensionAtomCreatedEvent is sent every time a new
         // atom is created on a monitored node
         matcherBehaviour = new MatcherBehaviour(ctx, "BotSkeletonMatchingExtension", registrationMatcherRetryInterval);
         matcherBehaviour.activate();
+
         // create filters to determine which atoms the bot should react to
         NotFilter noOwnAtoms = new NotFilter(
                 new AtomUriInNamedListFilter(ctx, ctx.getBotContextWrapper().getAtomCreateListName()));
@@ -133,6 +141,7 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
                 }
             }
         });
+
         // listen for the MatcherExtensionAtomCreatedEvent
         bus.subscribe(MatcherExtensionAtomCreatedEvent.class, new MatcherExtensionAtomCreatedAction(ctx));
         bus.subscribe(CloseFromOtherAtomEvent.class, new BaseEventBotAction(ctx) {
@@ -148,5 +157,23 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
             }
         });
         bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi));
+    }
+
+    // TODO for testing purposes only, remove at some point
+    private void fetchAndPrintData(OpenAqApi openAqApi) {
+        List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
+        int printCount = 10;
+        System.out.println("----------------------------------------");
+        System.out.println("Fetched Measurements (first " + printCount + " Elements printed):");
+        for (int i = 0; i < printCount; i++) {
+            System.out.println(latestMeasurements.get(i).toString());
+        }
+
+        List<Parameter> parameters = openAqApi.fetchParameters();
+        System.out.println("Fetched Parameters:");
+        for (Parameter param : parameters) {
+            System.out.println(param.toString());
+        }
+        System.out.println("----------------------------------------");
     }
 }
