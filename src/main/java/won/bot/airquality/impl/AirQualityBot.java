@@ -3,6 +3,10 @@ package won.bot.airquality.impl;
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import won.bot.airquality.action.MatcherExtensionAtomCreatedAction;
+import won.bot.airquality.context.AirQualityBotContextWrapper;
+import won.bot.airquality.dto.LocationMeasurements;
+import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
@@ -24,11 +28,10 @@ import won.bot.framework.extensions.matcher.MatcherExtension;
 import won.bot.framework.extensions.matcher.MatcherExtensionAtomCreatedEvent;
 import won.bot.framework.extensions.serviceatom.ServiceAtomBehaviour;
 import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
-import won.bot.airquality.action.MatcherExtensionAtomCreatedAction;
-import won.bot.airquality.context.AirQualityBotContextWrapper;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
+import java.util.List;
 
 public class AirQualityBot extends EventBot implements MatcherExtension, ServiceAtomExtension {
 
@@ -39,7 +42,7 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
     private ServiceAtomBehaviour serviceAtomBehaviour;
 
     @Setter
-    private String jsonURL;
+    private String openaqApiUrl;
     @Setter
     private int updateTime;
     @Setter
@@ -64,6 +67,13 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
 
     @Override
     protected void initializeEventListeners() {
+        OpenAqApi openAqApi = new OpenAqApi(this.openaqApiUrl);
+        List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
+        System.out.println("Fetched Measurements:");
+        for (LocationMeasurements measurements : latestMeasurements) {
+            System.out.println(measurements);
+        }
+
         EventListenerContext ctx = getEventListenerContext();
         if (!(getBotContextWrapper() instanceof AirQualityBotContextWrapper)) {
             logger.error(getBotContextWrapper().getBotName() + " does not work without a SkeletonBotContextWrapper");

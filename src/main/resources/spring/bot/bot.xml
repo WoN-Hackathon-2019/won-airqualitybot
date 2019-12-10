@@ -32,7 +32,7 @@
         <property name="matcherProtocolMatcherService" ref="matcherProtocolMatcherServiceJMSBased"/>
         <property name="registrationMatcherRetryInterval" value="5000"/>
 
-        <property name="jsonURL" value="${openaq.apiURL}"/>
+        <property name="openaqApiUrl" value="${openaq.apiURL}"/>
         <property name ="updateTime" value="${openaq.updateTime}"/>
         <property name ="publishTime" value ="${openaq.publishTime}"/>
         <property name ="createAllInOne" value ="${openaq.createAllInOne}"/>
