@@ -18,11 +18,11 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
         http://www.springframework.org/schema/beans/spring-beans.xsd">
-    <bean id="echoBot" class="won.bot.airquality.impl.AirQualityBot">
+    <bean id="airQualityBot" class="won.bot.airquality.impl.AirQualityBot">
         <property name="taskScheduler" ref="taskScheduler"/>
         <property name="botContextWrapper" ref="botContextWrapper"/>
         <property name="atomProducer">
-            <!-- since this bot does not create any atoms from other source, e.g rdf-files, mails etc, adding the NopAtomProducer will suffice, as it is never used -->
+            <!-- since this bot does not create any atoms from other source, e.g rdf-files, mails etc, adding the NopAtomProducer will suffice, as it is never used (TODO does this hold for the airQualityBot as well?)-->
             <bean class="won.bot.framework.component.atomproducer.impl.NopAtomProducer"/>
         </property>
 
@@ -33,9 +33,9 @@
         <property name="registrationMatcherRetryInterval" value="5000"/>
 
         <property name="openaqApiUrl" value="${openaq.apiURL}"/>
-        <property name ="updateTime" value="${openaq.updateTime}"/>
-        <property name ="publishTime" value ="${openaq.publishTime}"/>
-        <property name ="createAllInOne" value ="${openaq.createAllInOne}"/>
+        <property name ="updateTime" value="${aqbot.updateTime}"/>
+        <property name ="publishTime" value ="${aqbot.publishTime}"/>
+        <property name ="createAllInOne" value ="${aqbot.createAllInOne}"/>
 
         <property name="trigger">
             <bean class="org.springframework.scheduling.support.PeriodicTrigger">

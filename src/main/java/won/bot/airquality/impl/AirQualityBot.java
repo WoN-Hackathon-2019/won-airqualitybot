@@ -161,19 +161,21 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
 
     // TODO for testing purposes only, remove at some point
     private void fetchAndPrintData(OpenAqApi openAqApi) {
-        List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
         int printCount = 10;
-        System.out.println("----------------------------------------");
+        String separator = "------------------------------------------------------------------------------------------------------------------------";
+
+        System.out.println(separator + "\n" + separator);
+        List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
         System.out.println("Fetched Measurements (first " + printCount + " Elements printed):");
         for (int i = 0; i < printCount; i++) {
             System.out.println(latestMeasurements.get(i).toString());
         }
-
+        System.out.println(separator + "\n" + separator);
         List<Parameter> parameters = openAqApi.fetchParameters();
         System.out.println("Fetched Parameters:");
         for (Parameter param : parameters) {
             System.out.println(param.toString());
         }
-        System.out.println("----------------------------------------");
+        System.out.println(separator + "\n" + separator);
     }
 }
