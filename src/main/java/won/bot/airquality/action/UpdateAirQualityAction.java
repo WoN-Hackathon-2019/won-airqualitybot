@@ -8,23 +8,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
+import won.bot.airquality.dto.Measurement;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.eventbot.EventListenerContext;
+import won.bot.framework.eventbot.action.BaseEventBotAction;
 import won.bot.framework.eventbot.action.EventBotActionUtils;
 import won.bot.framework.eventbot.action.impl.atomlifecycle.AbstractCreateAtomAction;
 import won.bot.framework.eventbot.bus.EventBus;
 import won.bot.framework.eventbot.event.Event;
 import won.bot.framework.eventbot.event.impl.atomlifecycle.AtomCreatedEvent;
+import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandEvent;
+import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandFailureEvent;
+import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandResultEvent;
+import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandSuccessEvent;
 import won.bot.framework.eventbot.event.impl.lifecycle.ActEvent;
 import won.bot.framework.eventbot.event.impl.wonmessage.FailureResponseEvent;
+import won.bot.framework.eventbot.filter.impl.CommandResultFilter;
 import won.bot.framework.eventbot.listener.EventListener;
+import won.bot.framework.eventbot.listener.impl.ActionOnFirstEventListener;
 import won.protocol.message.WonMessage;
 import won.protocol.service.WonNodeInformationService;
 import won.protocol.util.DefaultAtomModelWrapper;
 import won.protocol.util.RdfUtils;
 import won.protocol.util.WonRdfUtils;
 import won.protocol.vocabulary.SCHEMA;
-import won.protocol.vocabulary.WONCON;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
@@ -47,26 +54,84 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
             return;
         }
 
-        logger.info("Fetching new data");
-        List<LocationMeasurements> locations = openAqApi.fetchLatestMeasurements();
-        logger.info("Fetched Measurements");
+        List<LocationMeasurements> locations = this.openAqApi.fetchLatestMeasurements();
 
-        AirQualityBotContextWrapper botContextWrapper = (AirQualityBotContextWrapper) ctx.getBotContextWrapper();
-        try {
-            logger.info("Create all job atoms");
-            for (LocationMeasurements locationMeasurements : locations) {
-                createAtomFromLocation(ctx, botContextWrapper, locationMeasurements);
-            }
-        } catch (Exception me) {
-            // TODO copied from another bot; should we remove this?
-            logger.error("messaging exception occurred:", me);
+        logger.info("Creating atoms...");
+        for (LocationMeasurements locationMeasurements : locations.subList(0, 3)) { // TODO use entire list if in productive use
+            createAtomForLocationMeasurements(locationMeasurements);
         }
-
-        logger.info("Done creating atoms");
     }
 
-    protected boolean createAtomFromLocation(EventListenerContext ctx, AirQualityBotContextWrapper botContextWrapper,
-                                             LocationMeasurements locationMeasurements) {
+    private void createAtomForLocationMeasurements(LocationMeasurements locationMeasurements) {
+        // Create a new atom URI
+        EventListenerContext ctx = getEventListenerContext();
+        URI wonNodeURI = ctx.getNodeURISource().getNodeURI();
+        URI atomURI = ctx.getWonNodeInformationService().generateAtomURI(wonNodeURI);
+
+        Dataset atomDataset = generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
+
+        // publish command
+        CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, "air_quality_uri_list_name");
+        // System.out.println("-----------------------------------------------------------------");
+        // System.out.println("-----------------------------------------------------------------");
+        // System.out.println("uriListName with explicit set: " + createCommand.getUriListName());
+        // createCommand = new CreateAtomCommandEvent(atomDataset);
+        // System.out.println("uriListName with default uriListName: " + createCommand.getUriListName());
+        // System.out.println("-----------------------------------------------------------------");
+        // System.out.println("-----------------------------------------------------------------");
+
+        // TODO actually use listeners to determine if the creation was successful or not
+        // create listeners for events fired when the atom was created
+        ctx.getEventBus().subscribe(
+                CreateAtomCommandResultEvent.class,
+                new ActionOnFirstEventListener( // the listener is destroyed after being invoked once.
+                        ctx,
+                        new CommandResultFilter(createCommand),  // only listen for success to the command we just published
+                        new BaseEventBotAction(ctx) {
+                            @Override
+                            protected void doRun(Event event, EventListener executingListener) {
+                                if(event instanceof CreateAtomCommandResultEvent) {
+                                    if (event instanceof CreateAtomCommandSuccessEvent) {
+                                        logger.info("Created Atom: {}", ((CreateAtomCommandSuccessEvent) event).getAtomURI());
+                                        return;
+                                    } else if (event instanceof CreateAtomCommandFailureEvent) {
+                                        logger.error("Failed to create atom with original URI: {}", ((CreateAtomCommandFailureEvent) event).getAtomUriBeforeCreation());
+                                        return; // TODO throw exception?
+                                    }
+                                }
+                                throw new IllegalStateException("Could not handle CreateAtomCommandResultEvent");
+                            }
+                        }));
+
+        logger.info("publishing atom create command with atomURI {} to wonNode {}", atomURI, wonNodeURI);
+        ctx.getEventBus().publish(createCommand);
+    }
+
+    private Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements) {
+        DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
+        atomWrapper.setTitle("Air Quality Data of Location " + locationMeasurements.getLocation());
+        atomWrapper.setDescription(locationMeasurements.toString());
+        atomWrapper.addTag("AirQualityData");
+        atomWrapper.addTag("AirQualityBot");
+
+        Resource locationNode = atomWrapper.createSeeksNode(null);  // create a blank node that represents a locationNode
+        //set the properties
+        locationNode.addProperty(SCHEMA.NAME, "location");
+        locationNode.addProperty(SCHEMA.LOCATION, locationMeasurements.getLocation());
+
+        for (Measurement m : locationMeasurements.getMeasurements()) {
+            Resource measurementNode = locationNode.getModel().createResource(); // create the second blank node (which represents an measurementNode)
+            measurementNode.addProperty(SCHEMA.NAME, "measurement");
+            measurementNode.addProperty(SCHEMA.ABOUT, m.getParameter());
+            measurementNode.addProperty(SCHEMA.VALUE, String.valueOf(m.getValue()));
+        }
+
+        return atomWrapper.getDataset();
+    }
+
+    // TODO reuse or remove
+    private boolean createAtomFromLocation(EventListenerContext ctx, AirQualityBotContextWrapper botContextWrapper,
+                                           LocationMeasurements locationMeasurements) {
         WonNodeInformationService wonNodeInformationService = ctx.getWonNodeInformationService();
 
         final URI wonNodeUri = ctx.getNodeURISource().getNodeURI();
@@ -100,21 +165,5 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         logger.debug("atom creation message sent with message URI {}", createAtomMessage.getMessageURI());
 
         return true;
-    }
-
-    private Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements) {
-        DefaultAtomModelWrapper atomModelWrapper = new DefaultAtomModelWrapper(atomURI);
-        Resource atom = atomModelWrapper.getAtomModel().createResource(atomURI.toString());
-        Resource seeksPart = atom.getModel().createResource();
-
-        // s:url
-        atom.addProperty(SCHEMA.URL, "");
-
-        String[] tags = {"AirData"};
-        for (String tag : tags) {
-            atom.addProperty(WONCON.tag, tag);
-        }
-
-        return atomModelWrapper.copyDataset();
     }
 }

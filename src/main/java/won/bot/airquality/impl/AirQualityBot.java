@@ -1,9 +1,14 @@
 package won.bot.airquality.impl;
 
 import lombok.Setter;
+import org.apache.jena.query.*;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.tdb.TDB;
+import org.apache.jena.vocabulary.DC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import won.bot.airquality.action.MatcherExtensionAtomCreatedAction;
 import won.bot.airquality.action.UpdateAirQualityAction;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
@@ -12,28 +17,38 @@ import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
+import won.bot.framework.eventbot.action.impl.wonmessage.OpenConnectionAction;
 import won.bot.framework.eventbot.behaviour.ExecuteWonMessageCommandBehaviour;
 import won.bot.framework.eventbot.bus.EventBus;
 import won.bot.framework.eventbot.event.Event;
 import won.bot.framework.eventbot.event.impl.command.connect.ConnectCommandEvent;
-import won.bot.framework.eventbot.event.impl.command.connect.ConnectCommandResultEvent;
-import won.bot.framework.eventbot.event.impl.command.connect.ConnectCommandSuccessEvent;
+import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandEvent;
+import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandSuccessEvent;
 import won.bot.framework.eventbot.event.impl.lifecycle.ActEvent;
-import won.bot.framework.eventbot.event.impl.wonmessage.CloseFromOtherAtomEvent;
 import won.bot.framework.eventbot.event.impl.wonmessage.ConnectFromOtherAtomEvent;
-import won.bot.framework.eventbot.filter.impl.AtomUriInNamedListFilter;
+import won.bot.framework.eventbot.event.impl.wonmessage.HintFromMatcherEvent;
 import won.bot.framework.eventbot.filter.impl.CommandResultFilter;
-import won.bot.framework.eventbot.filter.impl.NotFilter;
 import won.bot.framework.eventbot.listener.EventListener;
+import won.bot.framework.eventbot.listener.impl.ActionOnEventListener;
 import won.bot.framework.eventbot.listener.impl.ActionOnFirstEventListener;
 import won.bot.framework.extensions.matcher.MatcherBehaviour;
 import won.bot.framework.extensions.matcher.MatcherExtension;
 import won.bot.framework.extensions.matcher.MatcherExtensionAtomCreatedEvent;
 import won.bot.framework.extensions.serviceatom.ServiceAtomBehaviour;
 import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
+import won.protocol.message.WonMessage;
+import won.protocol.model.Coordinate;
+import won.protocol.util.DefaultAtomModelWrapper;
+import won.protocol.util.WonRdfUtils;
+import won.protocol.util.linkeddata.LinkedDataSource;
+import won.protocol.util.linkeddata.WonLinkedDataUtils;
+import won.protocol.vocabulary.SCHEMA;
+import won.protocol.vocabulary.WXCHAT;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collection;
 import java.util.List;
 
 public class AirQualityBot extends EventBot implements MatcherExtension, ServiceAtomExtension {
@@ -68,6 +83,141 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
         return matcherBehaviour;
     }
 
+    private void printRdfDatasetAndModel(Dataset dataset, Model model) {
+        RDFDataMgr.write(System.out, dataset, Lang.TRIG);
+        RDFDataMgr.write(System.out, model, Lang.TTL);
+    }
+
+    private void executeSparqlQuery(Dataset dataset) {
+        String queryString = "select * where {?a ?b ?c}";
+        Query query = QueryFactory.create(queryString);
+        try (QueryExecution qexec = QueryExecutionFactory.create(query, dataset)) {
+            qexec.getContext().set(TDB.symUnionDefaultGraph, true); // use this unless you know why not to - it will execute the query over the union of all graphs. Makes things easier.
+            ResultSet rs = qexec.execSelect();
+            if (rs.hasNext()) {
+                QuerySolution qs = rs.nextSolution();
+                System.out.println("?a:" + qs.get("a") + ", ?b:" + qs.get("b") + ", ?c: " + qs.get("c"));
+            }
+        }
+    }
+
+    private void sendMessageAndProcessResult(EventListenerContext ctx, Dataset atomContent) {
+        ExecuteWonMessageCommandBehaviour wonMessageCommandBehaviour = new ExecuteWonMessageCommandBehaviour(ctx);
+        wonMessageCommandBehaviour.activate();
+
+        CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomContent);
+        //
+        // ...(a) register result listener here, if needed (see (b) below)
+        //
+        getEventListenerContext().getEventBus().publish(createCommand);
+
+        // (b) this registers a listener that is activated when the message has been successful
+        // insert at position (a) above, if needed (because you want to register the listener before you publish the command)
+        ctx.getEventBus().subscribe(
+                CreateAtomCommandSuccessEvent.class,
+                new ActionOnFirstEventListener( //note the 'onFIRSTevent' in the name: the listener is destroyed after being invoked once.
+                        ctx,
+                        new CommandResultFilter(createCommand),  // only listen for success to the command we just made
+                        new BaseEventBotAction(ctx) {
+                            @Override
+                            protected void doRun(Event event, EventListener executingListener) {
+                                //your action here
+                            }
+                        }));
+    }
+
+    private void connectToOtherAtom(URI senderSocketURI, URI recipientSocketURI) {
+        String message = "Hello, let's connect!"; // optional welcome message
+        ConnectCommandEvent connectCommandEvent = new ConnectCommandEvent(senderSocketURI, recipientSocketURI, message);
+        getEventBus().publish(connectCommandEvent);
+    }
+
+    private void acceptConnectionFromOtherAtom(EventListenerContext ctx) {
+        // this code accepts any incoming connection request
+        getEventListenerContext().getEventBus().subscribe(
+                ConnectFromOtherAtomEvent.class,
+                new ActionOnEventListener(ctx, "open-reactor",
+                        new OpenConnectionAction(ctx, "Accepting Connection")));
+    }
+
+    private void reactToHint(EventListenerContext ctx) {
+        // this reacts with connect to any hint
+        getEventListenerContext().getEventBus().subscribe(
+                HintFromMatcherEvent.class,
+                new ActionOnEventListener(ctx, "hint-reactor",
+                        new OpenConnectionAction(ctx, "Connecting because of a Hint I got")));
+    }
+
+    private void obtainAtomSocket() {
+        try {
+            URI atomURI = new URI("");
+            URI socketURI = new URI(WXCHAT.ChatSocket.getURI()); // or any other socket type you want
+            LinkedDataSource linkedDataSource = getEventListenerContext().getLinkedDataSource();
+            Collection<URI> sockets = WonLinkedDataUtils.getSocketsOfType(atomURI, socketURI, linkedDataSource);
+            //sockets should have 0 or 1 items
+            if (sockets.isEmpty()) {
+                //did not find a socket of that type
+            }
+            for (URI socket : sockets) {
+                // do sth
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createAtom() {
+        // Create a new atom URI
+        EventListenerContext ctx = getEventListenerContext();
+        URI wonNodeUri = ctx.getNodeURISource().getNodeURI();
+        URI atomURI = ctx.getWonNodeInformationService().generateAtomURI(wonNodeUri);
+
+        // Set atom data - here only shown for commonly used (hence 'default') properties
+        DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
+        atomWrapper.setTitle("Interested in H.P. Lovecraft");
+        atomWrapper.setDescription("Contact me for all things Cthulhu, Yogge-Sothothe and R'lyeh");
+        atomWrapper.addTag("Fantasy");
+        atomWrapper.addTag("Fiction");
+        atomWrapper.addTag("Lovecraft");
+
+        // publish command
+        CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomWrapper.getDataset());
+        ctx.getEventBus().publish(createCommand);
+    }
+
+    private void setNonStandardAtomData(URI atomURI) {
+        // we assume you have created a new atom URI as 'atomURI'
+        // DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
+        // atomWrapper.createSeeksNodeIfNonExist(); // (sorry, this is ugly.)
+        // Resource book = getSeeksNodes().get(0);  // get the blank node that represents a book
+        // Resource author = book.getModel().createResource(); // create the second blank node (which represents an author)
+        // //set the properties
+        // book.addProperty(SCHEMA.ISBN, "1234-1234-1234");
+        // book.addProperty(SCHEMA.AUTHOR, author);
+        // author.addProperty(SCHEMA.NAME, "H.P. Lovecraft");
+        // author.addProperty(RDF.type, SCHEMA.PERSON);
+    }
+
+    private void getAtomData(MatcherExtensionAtomCreatedEvent atomCreatedEvent) {
+        DefaultAtomModelWrapper defaultAtomModelWrapper = new DefaultAtomModelWrapper(atomCreatedEvent.getAtomData());
+        System.out.println(defaultAtomModelWrapper.getAllTags());
+        defaultAtomModelWrapper.getSeeksNodes().forEach(node -> {
+            System.out.println(defaultAtomModelWrapper.getContentPropertyStringValue(node, DC.description));
+            Coordinate locationCoordinate = defaultAtomModelWrapper.getLocationCoordinate(node);
+            System.out.println(locationCoordinate.getLatitude() + ", " + locationCoordinate.getLongitude());
+            defaultAtomModelWrapper.getContentPropertyObjects(node, SCHEMA.LOCATION);
+        });
+    }
+
+    private Dataset getAtomByURI(URI atomURI) {
+        return getEventListenerContext().getLinkedDataSource().getDataForResource(atomURI);
+    }
+
+    private Dataset getMessageContent(WonMessage msg) {
+        WonRdfUtils.MessageUtils.getTextMessage(msg);
+        return msg.getMessageContent();
+    }
+
     @Override
     protected void initializeEventListeners() {
         OpenAqApi openAqApi = new OpenAqApi(this.openaqApiUrl);
@@ -79,83 +229,22 @@ public class AirQualityBot extends EventBot implements MatcherExtension, Service
             throw new IllegalStateException(
                     getBotContextWrapper().getBotName() + " does not work without a AirQualityBotContextWrapper");
         }
+
         EventBus bus = getEventBus();
         AirQualityBotContextWrapper botContextWrapper = (AirQualityBotContextWrapper) getBotContextWrapper();
-
-        // register listeners for event.impl.command events used to tell the bot to send
-        // messages
+        // register listeners for event.impl.command events used to tell the bot to send messages
         ExecuteWonMessageCommandBehaviour wonMessageCommandBehaviour = new ExecuteWonMessageCommandBehaviour(ctx);
         wonMessageCommandBehaviour.activate();
-
         // activate ServiceAtomBehaviour
         serviceAtomBehaviour = new ServiceAtomBehaviour(ctx);
         serviceAtomBehaviour.activate();
 
-        // set up matching extension
-        // as this is an extension, it can be activated and deactivated as needed
-        // if activated, a MatcherExtensionAtomCreatedEvent is sent every time a new
-        // atom is created on a monitored node
-        matcherBehaviour = new MatcherBehaviour(ctx, "BotSkeletonMatchingExtension", registrationMatcherRetryInterval);
-        matcherBehaviour.activate();
+        // List<LocationMeasurements> measurements = openAqApi.fetchLatestMeasurements();
+        // if (measurements == null || measurements.isEmpty()) {
+        //     throw new IllegalStateException("No measurements found.");
+        // }
+        // new UpdateAirQualityAction(ctx, openAqApi).createAtomForLocationMeasurement(measurements.get(0));
 
-        // create filters to determine which atoms the bot should react to
-        NotFilter noOwnAtoms = new NotFilter(
-                new AtomUriInNamedListFilter(ctx, ctx.getBotContextWrapper().getAtomCreateListName()));
-        // filter to prevent reacting to serviceAtom<->ownedAtom events;
-        NotFilter noInternalServiceAtomEventFilter = getNoInternalServiceAtomEventFilter();
-        bus.subscribe(ConnectFromOtherAtomEvent.class, noInternalServiceAtomEventFilter, new BaseEventBotAction(ctx) {
-            @Override
-            protected void doRun(Event event, EventListener executingListener) {
-                EventListenerContext ctx = getEventListenerContext();
-                ConnectFromOtherAtomEvent connectFromOtherAtomEvent = (ConnectFromOtherAtomEvent) event;
-                try {
-                    String message = "Hello i am the BotSkeletor i will send you a message everytime an atom is created...";
-                    final ConnectCommandEvent connectCommandEvent = new ConnectCommandEvent(
-                            connectFromOtherAtomEvent.getRecipientSocket(),
-                            connectFromOtherAtomEvent.getSenderSocket(), message);
-                    ctx.getEventBus().subscribe(ConnectCommandSuccessEvent.class, new ActionOnFirstEventListener(ctx,
-                            new CommandResultFilter(connectCommandEvent), new BaseEventBotAction(ctx) {
-                        @Override
-                        protected void doRun(Event event, EventListener executingListener) {
-                            ConnectCommandResultEvent connectionMessageCommandResultEvent = (ConnectCommandResultEvent) event;
-                            if (!connectionMessageCommandResultEvent.isSuccess()) {
-                                logger.error("Failure when trying to open a received Request: "
-                                        + connectionMessageCommandResultEvent.getMessage());
-                            } else {
-                                logger.info(
-                                        "Add an established connection " +
-                                                connectCommandEvent.getLocalSocket()
-                                                + " -> "
-                                                + connectCommandEvent.getTargetSocket()
-                                                +
-                                                " to the botcontext ");
-                                botContextWrapper.addConnectedSocket(
-                                        connectCommandEvent.getLocalSocket(),
-                                        connectCommandEvent.getTargetSocket());
-                            }
-                        }
-                    }));
-                    ctx.getEventBus().publish(connectCommandEvent);
-                } catch (Exception te) {
-                    logger.error(te.getMessage(), te);
-                }
-            }
-        });
-
-        // listen for the MatcherExtensionAtomCreatedEvent
-        bus.subscribe(MatcherExtensionAtomCreatedEvent.class, new MatcherExtensionAtomCreatedAction(ctx));
-        bus.subscribe(CloseFromOtherAtomEvent.class, new BaseEventBotAction(ctx) {
-            @Override
-            protected void doRun(Event event, EventListener executingListener) {
-                EventListenerContext ctx = getEventListenerContext();
-                CloseFromOtherAtomEvent closeFromOtherAtomEvent = (CloseFromOtherAtomEvent) event;
-                URI targetSocketUri = closeFromOtherAtomEvent.getSocketURI();
-                URI senderSocketUri = closeFromOtherAtomEvent.getTargetSocketURI();
-                logger.info("Remove a closed connection " + senderSocketUri + " -> " + targetSocketUri
-                        + " from the botcontext ");
-                botContextWrapper.removeConnectedSocket(senderSocketUri, targetSocketUri);
-            }
-        });
         bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi));
     }
 
