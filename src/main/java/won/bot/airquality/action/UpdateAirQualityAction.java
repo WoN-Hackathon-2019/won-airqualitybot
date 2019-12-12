@@ -3,10 +3,9 @@ package won.bot.airquality.action;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.query.Dataset;
-import org.apache.jena.rdf.model.RDFList;
-import org.apache.jena.rdf.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import won.bot.airquality.atom.AtomFactory;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.external.OpenAqApi;
@@ -28,10 +27,8 @@ import won.bot.framework.eventbot.listener.EventListener;
 import won.bot.framework.eventbot.listener.impl.ActionOnFirstEventListener;
 import won.protocol.message.WonMessage;
 import won.protocol.service.WonNodeInformationService;
-import won.protocol.util.DefaultAtomModelWrapper;
 import won.protocol.util.RdfUtils;
 import won.protocol.util.WonRdfUtils;
-import won.protocol.vocabulary.SCHEMA;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
@@ -68,7 +65,7 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         URI wonNodeURI = ctx.getNodeURISource().getNodeURI();
         URI atomURI = ctx.getWonNodeInformationService().generateAtomURI(wonNodeURI);
 
-        Dataset atomDataset = generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
+        Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
 
         // TODO what is the uriListName for?
         CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, "air_quality_uri_list_name");
@@ -100,33 +97,6 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         ctx.getEventBus().publish(createCommand);
     }
 
-    private Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements) {
-        DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
-        atomWrapper.setTitle("Air Quality Data of Location " + locationMeasurements.getLocation());
-        atomWrapper.setDescription(locationMeasurements.toString());
-        atomWrapper.addTag("AirQualityData");
-        atomWrapper.addTag("AirQualityBot");
-
-        Resource locationNode = atomWrapper.createSeeksNode(null);  // create a blank node that represents a locationNode
-        locationNode.addProperty(SCHEMA.ABOUT, "location");
-        locationNode.addProperty(SCHEMA.NAME, locationMeasurements.getLocation());
-
-        Resource[] measurementNodes = locationMeasurements.getMeasurements().stream()
-                .map(measurement -> {
-                    Resource measurementNode = locationNode.getModel().createResource(); // create the second blank node (which represents a measurementNode)
-                    measurementNode.addProperty(SCHEMA.ABOUT, "measurement");
-                    measurementNode.addProperty(SCHEMA.NAME, measurement.getParameter());
-                    measurementNode.addProperty(SCHEMA.VALUE, String.valueOf(measurement.getValue()));
-                    return measurementNode;
-                })
-                .toArray(Resource[]::new);
-
-        RDFList measurementsNode = locationNode.getModel().createList(measurementNodes);
-        locationNode.addProperty(SCHEMA.VALUE, measurementsNode);
-
-        return atomWrapper.getDataset();
-    }
-
     // TODO reuse or remove
     private boolean createAtomFromLocation(EventListenerContext ctx, AirQualityBotContextWrapper botContextWrapper,
                                            LocationMeasurements locationMeasurements) {
@@ -135,7 +105,7 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         final URI wonNodeUri = ctx.getNodeURISource().getNodeURI();
         final URI atomURI = wonNodeInformationService.generateAtomURI(wonNodeUri);
 
-        Dataset dataset = this.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
+        Dataset dataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
         logger.debug("creating atom on won node {} with content {} ", wonNodeUri,
                 StringUtils.abbreviate(RdfUtils.toString(dataset), 150));
 
