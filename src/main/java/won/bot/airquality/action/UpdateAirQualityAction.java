@@ -3,12 +3,12 @@ package won.bot.airquality.action;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.query.Dataset;
+import org.apache.jena.rdf.model.RDFList;
 import org.apache.jena.rdf.model.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
-import won.bot.airquality.dto.Measurement;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
@@ -70,18 +70,11 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
 
         Dataset atomDataset = generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
 
-        // publish command
+        // TODO what is the uriListName for?
         CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, "air_quality_uri_list_name");
-        // System.out.println("-----------------------------------------------------------------");
-        // System.out.println("-----------------------------------------------------------------");
-        // System.out.println("uriListName with explicit set: " + createCommand.getUriListName());
-        // createCommand = new CreateAtomCommandEvent(atomDataset);
-        // System.out.println("uriListName with default uriListName: " + createCommand.getUriListName());
-        // System.out.println("-----------------------------------------------------------------");
-        // System.out.println("-----------------------------------------------------------------");
 
         // TODO actually use listeners to determine if the creation was successful or not
-        // create listeners for events fired when the atom was created
+        // create listeners to react to events fired by the published command
         ctx.getEventBus().subscribe(
                 CreateAtomCommandResultEvent.class,
                 new ActionOnFirstEventListener( // the listener is destroyed after being invoked once.
@@ -90,7 +83,7 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
                         new BaseEventBotAction(ctx) {
                             @Override
                             protected void doRun(Event event, EventListener executingListener) {
-                                if(event instanceof CreateAtomCommandResultEvent) {
+                                if (event instanceof CreateAtomCommandResultEvent) {
                                     if (event instanceof CreateAtomCommandSuccessEvent) {
                                         logger.info("Created Atom: {}", ((CreateAtomCommandSuccessEvent) event).getAtomURI());
                                         return;
@@ -115,16 +108,21 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         atomWrapper.addTag("AirQualityBot");
 
         Resource locationNode = atomWrapper.createSeeksNode(null);  // create a blank node that represents a locationNode
-        //set the properties
-        locationNode.addProperty(SCHEMA.NAME, "location");
-        locationNode.addProperty(SCHEMA.LOCATION, locationMeasurements.getLocation());
+        locationNode.addProperty(SCHEMA.ABOUT, "location");
+        locationNode.addProperty(SCHEMA.NAME, locationMeasurements.getLocation());
 
-        for (Measurement m : locationMeasurements.getMeasurements()) {
-            Resource measurementNode = locationNode.getModel().createResource(); // create the second blank node (which represents an measurementNode)
-            measurementNode.addProperty(SCHEMA.NAME, "measurement");
-            measurementNode.addProperty(SCHEMA.ABOUT, m.getParameter());
-            measurementNode.addProperty(SCHEMA.VALUE, String.valueOf(m.getValue()));
-        }
+        Resource[] measurementNodes = locationMeasurements.getMeasurements().stream()
+                .map(measurement -> {
+                    Resource measurementNode = locationNode.getModel().createResource(); // create the second blank node (which represents a measurementNode)
+                    measurementNode.addProperty(SCHEMA.ABOUT, "measurement");
+                    measurementNode.addProperty(SCHEMA.NAME, measurement.getParameter());
+                    measurementNode.addProperty(SCHEMA.VALUE, String.valueOf(measurement.getValue()));
+                    return measurementNode;
+                })
+                .toArray(Resource[]::new);
+
+        RDFList measurementsNode = locationNode.getModel().createList(measurementNodes);
+        locationNode.addProperty(SCHEMA.VALUE, measurementsNode);
 
         return atomWrapper.getDataset();
     }

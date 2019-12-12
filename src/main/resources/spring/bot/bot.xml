@@ -30,12 +30,15 @@
         <property name="matcherNodeURISource" ref="matcherNodeURISource"/>
         <property name="matcherProtocolAtomServiceClient" ref="matcherProtocolAtomServiceClient"/>
         <property name="matcherProtocolMatcherService" ref="matcherProtocolMatcherServiceJMSBased"/>
-        <property name="registrationMatcherRetryInterval" value="5000"/>
 
-        <property name="openaqApiUrl" value="${openaq.apiURL}"/>
-        <property name ="updateTime" value="${aqbot.updateTime}"/>
-        <property name ="publishTime" value ="${aqbot.publishTime}"/>
-        <property name ="createAllInOne" value ="${aqbot.createAllInOne}"/>
+        <property name="openAqApi">
+            <bean class="won.bot.airquality.external.OpenAqApi">
+                <constructor-arg name="apiUrl" value="${openaq.apiURL}"/>
+            </bean>
+        </property>
+        <property name="updateTime" value="${aqbot.updateTime}"/>
+        <property name="publishTime" value="${aqbot.publishTime}"/>
+        <property name="createAllInOne" value="${aqbot.createAllInOne}"/>
 
         <property name="trigger">
             <bean class="org.springframework.scheduling.support.PeriodicTrigger">
