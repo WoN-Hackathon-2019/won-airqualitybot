@@ -11,9 +11,12 @@ public class AirQualitySchema {
 
     private static Model m = ModelFactory.createDefaultModel();
 
-    public static final Property LOCATION = m.createProperty("http://schema.org/Place");
-    public static final Property LOC_ADDRESS = m.createProperty("http://schema.org/address");
-    public static final Property LOC_MEASUREMENT = m.createProperty("http://schema.org/amenityFeature");
+    public static final Property LOCATION = m.createProperty("http://schema.org/Location");
+
+    public static final Property PLACE = m.createProperty("http://schema.org/Place");
+
+    public static final Property PLACE_ADDRESS = m.createProperty("http://schema.org/address");
+    public static final Property PLACE_MEASUREMENT = m.createProperty("http://schema.org/amenityFeature");
 
     public static final Property ADDRESS = m.createProperty("http://schema.org/PostalAddress");
     public static final Property ADDR_COUNTRY = m.createProperty("http://schema.org/addressCountry");
