@@ -36,6 +36,12 @@ public class AtomFactory {
                     measurementNode.addProperty(AirQualitySchema.MEASURE_VALUE, String.valueOf(measurement.getValue()));
                     measurementNode.addProperty(AirQualitySchema.MEASURE_UNIT, String.valueOf(measurement.getUnit()));
                     // TODO add timestamp of measurement
+                    //-----------------------
+
+
+                    // in atom/AirQualitySchema https://schema.org/datePublished oder https://schema.org/DateTime ??
+
+                    //-----------------------
                     // TODO maybe add name of parameter (not just ID)
                     return measurementNode;
                 })
