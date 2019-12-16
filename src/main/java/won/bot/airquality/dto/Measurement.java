@@ -3,6 +3,8 @@ package won.bot.airquality.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;
 import lombok.Setter;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 
 @Getter
 @Setter
@@ -15,7 +17,7 @@ public class Measurement {
 
     private String unit;
 
-    private String lastUpdated;
+    private DateTime lastUpdated;
 
     @Override
     public String toString() {
