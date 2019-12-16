@@ -1,7 +1,6 @@
 package won.bot.airquality.atom;
 
 import org.apache.jena.query.Dataset;
-import org.apache.jena.rdf.model.RDFList;
 import org.apache.jena.rdf.model.Resource;
 import won.bot.airquality.dto.LocationMeasurements;
 import won.protocol.util.DefaultAtomModelWrapper;
@@ -24,12 +23,12 @@ public class AtomFactory {
         atomWrapper.addTag(AQ_DATA_TAG);
         atomWrapper.addTag(AQ_BOT_TAG);
 
-        Resource locationNode = atomWrapper.createSeeksNode(null);  // create a blank node that represents a locationNode
+        Resource locationNode = atomWrapper.getAtomContentNode();  // create a blank node that represents a locationNode
         locationNode.addProperty(AirQualitySchema.LOCATION, locationMeasurements.getLocation());
         locationNode.addProperty(AirQualitySchema.CITY, locationMeasurements.getCity());
         locationNode.addProperty(AirQualitySchema.COUNTRY, locationMeasurements.getCountry());
 
-        Resource[] measurementNodes = locationMeasurements.getMeasurements().stream()
+        locationMeasurements.getMeasurements().stream()
                 .map(measurement -> {
                     Resource measurementNode = locationNode.getModel().createResource(); // create the second blank node (which represents a measurementNode)
                     measurementNode.addProperty(AirQualitySchema.MEASURE_PARAM, measurement.getParameter());
@@ -39,10 +38,7 @@ public class AtomFactory {
                     // TODO maybe add name of parameter (not just ID)
                     return measurementNode;
                 })
-                .toArray(Resource[]::new);
-
-        RDFList measurementsNode = locationNode.getModel().createList(measurementNodes);
-        locationNode.addProperty(AirQualitySchema.MEASUREMENTS, measurementsNode);
+                .forEach(measurementResource -> locationNode.addProperty(AirQualitySchema.MEASUREMENT, measurementResource));
 
         return atomWrapper.getDataset();
     }
