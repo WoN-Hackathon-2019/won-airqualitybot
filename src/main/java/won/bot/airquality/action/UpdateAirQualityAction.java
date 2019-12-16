@@ -7,6 +7,7 @@ import won.bot.airquality.atom.AtomFactory;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.event.DeleteAtomEvent;
+import won.bot.airquality.dto.Parameter;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
@@ -26,6 +27,9 @@ import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class UpdateAirQualityAction extends AbstractCreateAtomAction {
     public static final String URI_LIST_NAME = "air_quality_uri_list_name";
@@ -46,23 +50,25 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
             return;
         }
         List<LocationMeasurements> locations = this.openAqApi.fetchLatestMeasurements();
+        List<Parameter> parameters = this.openAqApi.fetchParameters();
         ArrayList<URI> toDelete = new ArrayList<>(getEventListenerContext().getBotContext().getNamedAtomUriList(URI_LIST_NAME));
 
         logger.info("Creating atoms...");
         for (LocationMeasurements locationMeasurements : locations.subList(0, 3)) { // TODO use entire list if in productive use
-            createAtomForLocationMeasurements(locationMeasurements);
+            createAtomForLocationMeasurements(locationMeasurements, parameters);
         }
 
         toDelete.forEach(uri -> ctx.getEventBus().publish(new DeleteAtomEvent(uri)));
     }
 
-    private void createAtomForLocationMeasurements(LocationMeasurements locationMeasurements) {
+    private void createAtomForLocationMeasurements(LocationMeasurements locationMeasurements, List<Parameter> parameters) {
         // Create a new atom URI
         EventListenerContext ctx = getEventListenerContext();
         URI wonNodeURI = ctx.getNodeURISource().getNodeURI();
         URI atomURI = ctx.getWonNodeInformationService().generateAtomURI(wonNodeURI);
 
-        Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
+        Map<String, Parameter> paramIdToParam = parameters.stream().collect(Collectors.toMap(Parameter::getId, Function.identity()));
+        Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements, paramIdToParam);
 
         CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, URI_LIST_NAME);
 
