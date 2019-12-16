@@ -3,16 +3,20 @@ package won.bot.airquality.impl;
 import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import won.bot.airquality.action.DeleteAction;
 import won.bot.airquality.action.UpdateAirQualityAction;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.dto.Parameter;
+import won.bot.airquality.event.DeleteAtomEvent;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.behaviour.ExecuteWonMessageCommandBehaviour;
 import won.bot.framework.eventbot.bus.EventBus;
+import won.bot.framework.eventbot.event.BaseEvent;
 import won.bot.framework.eventbot.event.impl.lifecycle.ActEvent;
+import won.bot.framework.eventbot.event.impl.wonmessage.SuccessResponseEvent;
 import won.bot.framework.extensions.serviceatom.ServiceAtomBehaviour;
 import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
 
@@ -60,6 +64,7 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
         serviceAtomBehaviour.activate();
 
         EventBus bus = getEventBus();
+        bus.subscribe(DeleteAtomEvent.class, new DeleteAction(ctx, UpdateAirQualityAction.URI_LIST_NAME));
         bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi));
     }
 
