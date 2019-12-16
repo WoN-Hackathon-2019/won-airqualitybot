@@ -29,7 +29,4 @@ public class AirQualitySchema {
     public static final Property MEASURE_PARAM_NAME = m.createProperty("http://schema.org/name");
     public static final Property MEASURE_VALUE = m.createProperty("http://schema.org/value");
     public static final Property MEASURE_UNIT = m.createProperty("http://schema.org/unitCode");
-    public static final Property MEASURE_UNIT_TEXT = m.createProperty("http://schema.org/unitText");
-
-    public static final Property DATETIME = m.createProperty("http://schema.org/DateTime");
 }

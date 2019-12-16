@@ -6,8 +6,8 @@ import org.slf4j.LoggerFactory;
 import won.bot.airquality.atom.AtomFactory;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
-import won.bot.airquality.event.DeleteAtomEvent;
 import won.bot.airquality.dto.Parameter;
+import won.bot.airquality.event.DeleteAtomEvent;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
@@ -32,6 +32,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UpdateAirQualityAction extends AbstractCreateAtomAction {
+
     public static final String URI_LIST_NAME = "air_quality_uri_list_name";
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 

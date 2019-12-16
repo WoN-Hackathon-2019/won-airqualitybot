@@ -36,16 +36,13 @@
                 <constructor-arg name="apiUrl" value="${openaq.apiURL}"/>
             </bean>
         </property>
-        <property name="updateTime" value="${aqbot.updateTime}"/>
-        <property name="publishTime" value="${aqbot.publishTime}"/>
-        <property name="createAllInOne" value="${aqbot.createAllInOne}"/>
 
         <property name="trigger">
             <bean class="org.springframework.scheduling.support.PeriodicTrigger">
-                <constructor-arg name="period" value="20000"/>
+                <constructor-arg name="period" value="${aqbot.updateIntervalMs}"/>
                 <constructor-arg name="timeUnit" value="MILLISECONDS"/>
-                <property name="initialDelay" value="10000"/> <!-- wait 10s at the beginning -->
-                <property name="fixedRate" value="false"/>  <!-- fixed delay after completion -->
+                <property name="initialDelay" value="${aqbot.initialDelayMs}"/>
+                <property name="fixedRate" value="false"/> <!-- fixed delay after completion -->
             </bean>
         </property>
     </bean>

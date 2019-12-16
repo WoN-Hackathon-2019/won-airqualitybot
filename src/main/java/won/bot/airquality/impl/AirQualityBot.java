@@ -14,9 +14,7 @@ import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.behaviour.ExecuteWonMessageCommandBehaviour;
 import won.bot.framework.eventbot.bus.EventBus;
-import won.bot.framework.eventbot.event.BaseEvent;
 import won.bot.framework.eventbot.event.impl.lifecycle.ActEvent;
-import won.bot.framework.eventbot.event.impl.wonmessage.SuccessResponseEvent;
 import won.bot.framework.extensions.serviceatom.ServiceAtomBehaviour;
 import won.bot.framework.extensions.serviceatom.ServiceAtomExtension;
 
@@ -31,12 +29,6 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
 
     @Setter
     private OpenAqApi openAqApi;
-    @Setter
-    private int updateTime;
-    @Setter
-    private int publishTime;
-    @Setter
-    private boolean createAllInOne;
 
     @Override
     public ServiceAtomBehaviour getServiceAtomBehaviour() {
@@ -49,9 +41,9 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
 
         EventListenerContext ctx = getEventListenerContext();
         if (!(getBotContextWrapper() instanceof AirQualityBotContextWrapper)) {
-            logger.error(getBotContextWrapper().getBotName() + " does not work without a AirQualityBotContextWrapper");
-            throw new IllegalStateException(
-                    getBotContextWrapper().getBotName() + " does not work without a AirQualityBotContextWrapper");
+            String botName = getBotContextWrapper().getBotName();
+            logger.error("{} does not work without a AirQualityBotContextWrapper", botName);
+            throw new IllegalStateException(botName + " does not work without a AirQualityBotContextWrapper");
         }
 
         // required for sending messages, like those for creating atoms
