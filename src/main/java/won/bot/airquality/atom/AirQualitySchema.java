@@ -17,6 +17,7 @@ public class AirQualitySchema {
 
     public static final Property PLACE_ADDRESS = m.createProperty("http://schema.org/address");
     public static final Property PLACE_MEASUREMENT = m.createProperty("http://schema.org/amenityFeature");
+    public static final Property PLACE_COORDINATES = m.createProperty("http://schema.org/geo");
 
     public static final Property ADDRESS = m.createProperty("http://schema.org/PostalAddress");
     public static final Property ADDR_COUNTRY = m.createProperty("http://schema.org/addressCountry");
@@ -29,4 +30,8 @@ public class AirQualitySchema {
     public static final Property MEASURE_PARAM_NAME = m.createProperty("http://schema.org/name");
     public static final Property MEASURE_VALUE = m.createProperty("http://schema.org/value");
     public static final Property MEASURE_UNIT = m.createProperty("http://schema.org/unitCode");
+
+    public static final Property GEOCOORDINATES = m.createProperty("http://schema.org/GeoCoordinates");
+    public static final Property GEO_LATITUDE = m.createProperty("http://schema.org/latitude");
+    public static final Property GEO_LONGITUDE = m.createProperty("http://schema.org/longitude");
 }
