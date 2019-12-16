@@ -4,19 +4,17 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.dto.Parameter;
 import won.bot.airquality.external.OpenAqApi;
 import won.protocol.util.DefaultAtomModelWrapper;
 
 import java.net.URI;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,6 +25,7 @@ public class AtomFactory {
 
     private static final String AQ_DATA_TAG = "AirQualityData";
     private static final String AQ_BOT_TAG = "AirQualityBot";
+    private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
 
     public static Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements, Map<String, Parameter> paramIdToParam) {
         DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
@@ -72,10 +71,8 @@ public class AtomFactory {
     }
 
     private static String dateTimeToISO8601(DateTime dateTime) {
-        TimeZone tz = TimeZone.getTimeZone("UTC"); // TODO maybe convert every dateTime to UTC
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
-        df.setTimeZone(dateTime.getZone().toTimeZone());
-        return df.format(dateTime);
+        DateTimeFormatter formatter = DateTimeFormat.forPattern(DATE_FORMAT);
+        return formatter.print(dateTime);
     }
 
     // TODO finish or delete
