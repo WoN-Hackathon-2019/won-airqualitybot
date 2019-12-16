@@ -15,12 +15,15 @@ public class Measurement {
 
     private String unit;
 
+    private String lastUpdated;
+
     @Override
     public String toString() {
         return "Measurement{" +
                 "parameter='" + parameter + '\'' +
                 ", value=" + value +
                 ", unit='" + unit + '\'' +
+                ", lastUpdated='" + lastUpdated + '\'' +
                 '}';
     }
 }

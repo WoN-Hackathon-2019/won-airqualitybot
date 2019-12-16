@@ -15,8 +15,8 @@ public class AtomFactory {
     private AtomFactory() {
     }
 
-    private static final String AQ_DATA_TAG = "AirQualityData";
-    private static final String AQ_BOT_TAG = "AirQualityBot";
+    private static final String AQ_DATA_TAG = "TEST1205_AirQualityData";
+    private static final String AQ_BOT_TAG = "TEST1205_AirQualityBot";
 
     public static Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements, Map<String, Parameter> paramIdToParam) {
         DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
@@ -30,9 +30,9 @@ public class AtomFactory {
         Resource locationNode = model.createResource(AirQualitySchema.LOCATION);
 
         Resource addressNode = atomWrapper.getAtomModel().createResource(AirQualitySchema.ADDRESS);
-        addressNode.addProperty(AirQualitySchema.COUNTRY, locationMeasurements.getCountry());
-        addressNode.addProperty(AirQualitySchema.CITY, locationMeasurements.getCity());
-        addressNode.addProperty(AirQualitySchema.LOCALITY, locationMeasurements.getLocation());
+        addressNode.addProperty(AirQualitySchema.ADDR_COUNTRY, locationMeasurements.getCountry());
+        addressNode.addProperty(AirQualitySchema.ADDR_CITY, locationMeasurements.getCity());
+        addressNode.addProperty(AirQualitySchema.ADDR_LOCALITY, locationMeasurements.getLocation());
         locationNode.addProperty(AirQualitySchema.LOC_ADDRESS, addressNode);
 
         locationMeasurements.getMeasurements().stream()
@@ -44,6 +44,7 @@ public class AtomFactory {
                             paramIdToParam.getOrDefault(paramId, Parameter.unknown(paramId)).getDescription());
                     measurementNode.addProperty(AirQualitySchema.MEASURE_VALUE, String.valueOf(measurement.getValue()));
                     measurementNode.addProperty(AirQualitySchema.MEASURE_UNIT, String.valueOf(measurement.getUnit()));
+                    measurementNode.addProperty(AirQualitySchema.MEASURE_DATETIME, String.valueOf(measurement.getLastUpdated()));
                     // TODO add timestamp of measurement
                     //-----------------------
 
@@ -58,4 +59,6 @@ public class AtomFactory {
 
         return atomWrapper.getDataset();
     }
+
+
 }
