@@ -1,7 +1,5 @@
 package won.bot.airquality.action;
 
-
-import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.query.Dataset;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,22 +11,15 @@ import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
 import won.bot.framework.eventbot.action.EventBotActionUtils;
 import won.bot.framework.eventbot.action.impl.atomlifecycle.AbstractCreateAtomAction;
-import won.bot.framework.eventbot.bus.EventBus;
 import won.bot.framework.eventbot.event.Event;
-import won.bot.framework.eventbot.event.impl.atomlifecycle.AtomCreatedEvent;
 import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandEvent;
 import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandFailureEvent;
 import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandResultEvent;
 import won.bot.framework.eventbot.event.impl.command.create.CreateAtomCommandSuccessEvent;
 import won.bot.framework.eventbot.event.impl.lifecycle.ActEvent;
-import won.bot.framework.eventbot.event.impl.wonmessage.FailureResponseEvent;
 import won.bot.framework.eventbot.filter.impl.CommandResultFilter;
 import won.bot.framework.eventbot.listener.EventListener;
 import won.bot.framework.eventbot.listener.impl.ActionOnFirstEventListener;
-import won.protocol.message.WonMessage;
-import won.protocol.service.WonNodeInformationService;
-import won.protocol.util.RdfUtils;
-import won.protocol.util.WonRdfUtils;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
@@ -36,6 +27,8 @@ import java.util.List;
 
 public class UpdateAirQualityAction extends AbstractCreateAtomAction {
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    private static final String URI_LIST_NAME = "air_quality_uri_list_name";
+
     private final OpenAqApi openAqApi;
 
     public UpdateAirQualityAction(EventListenerContext eventListenerContext, OpenAqApi openAqApi) {
@@ -44,7 +37,7 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
     }
 
     @Override
-    protected void doRun(Event event, EventListener eventListener) throws Exception {
+    protected void doRun(Event event, EventListener eventListener) {
         EventListenerContext ctx = getEventListenerContext();
 
         if (!(event instanceof ActEvent) || !(ctx.getBotContextWrapper() instanceof AirQualityBotContextWrapper)) {
@@ -67,39 +60,8 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
 
         Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
 
-        // TODO what is the uriListName for?
-        CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, "air_quality_uri_list_name");
+        CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, URI_LIST_NAME);
 
-        // TODO actually use listeners to determine if the creation was successful or not
-        //------------------
-
-
-
-        // --> https://github.com/researchstudio-sat/spoco-edenred-bot/blob/master/src/main/java/won/bot/skeleton/action/CreateEdenredAtomAction.java Z.63ff
-        EventBus bus = ctx.getEventBus();
-        EventListener successCallback = new EventListener() {
-            @Override
-            public void onEvent(Event event) {
-                logger.debug("atom creation successful, new atom URI is {}", atomURI);
-                bus.publish(new AtomCreatedEvent(atomURI, wonNodeURI, atomDataset, null));
-                // TODO botContextWrapper.addEdenredAtom(edenredDataPoint, atomURI);
-            }
-        };
-        EventListener failureCallback = new EventListener() {
-            @Override
-            public void onEvent(Event event) {
-                String textMessage = WonRdfUtils.MessageUtils
-                        .getTextMessage(((FailureResponseEvent) event).getFailureMessage());
-                logger.error("atom creation failed for atom URI {}, original message URI {}: {}", atomURI,
-                        ((FailureResponseEvent) event).getOriginalMessageURI(), textMessage);
-                // TODO botContextWrapper.removeEden(edenredAtomToCreate);
-                EventBotActionUtils.removeFromList(ctx, atomURI, uriListName);
-            }
-        };
-
-
-
-        //--------------------
         // create listeners to react to events fired by the published command
         ctx.getEventBus().subscribe(
                 CreateAtomCommandResultEvent.class,
@@ -114,7 +76,8 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
                                         logger.info("Created Atom: {}", ((CreateAtomCommandSuccessEvent) event).getAtomURI());
                                         return;
                                     } else if (event instanceof CreateAtomCommandFailureEvent) {
-                                        logger.error("Failed to create atom with original URI: {}", ((CreateAtomCommandFailureEvent) event).getAtomUriBeforeCreation());
+                                        logger.error("Failed to create atom with original URI: {}, event={}", ((CreateAtomCommandFailureEvent) event).getAtomUriBeforeCreation(), event);
+                                        EventBotActionUtils.removeFromList(ctx, atomURI, uriListName);
                                         return; // TODO throw exception?
                                     }
                                 }
@@ -124,43 +87,5 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
 
         logger.info("publishing atom create command with atomURI {} to wonNode {}", atomURI, wonNodeURI);
         ctx.getEventBus().publish(createCommand);
-    }
-
-    // TODO reuse or remove
-    private boolean createAtomFromLocation(EventListenerContext ctx, AirQualityBotContextWrapper botContextWrapper,
-                                           LocationMeasurements locationMeasurements) {
-        WonNodeInformationService wonNodeInformationService = ctx.getWonNodeInformationService();
-
-        final URI wonNodeUri = ctx.getNodeURISource().getNodeURI();
-        final URI atomURI = wonNodeInformationService.generateAtomURI(wonNodeUri);
-
-        Dataset dataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
-        logger.debug("creating atom on won node {} with content {} ", wonNodeUri,
-                StringUtils.abbreviate(RdfUtils.toString(dataset), 150));
-
-        WonMessage createAtomMessage = ctx.getWonMessageSender().prepareMessage(createWonMessage(atomURI, dataset));
-        EventBotActionUtils.rememberInList(ctx, atomURI, uriListName);
-//        botContextWrapper.addURIJobURLRelation(hokifyJob.getUrl(), atomURI);
-
-        EventBus bus = ctx.getEventBus();
-        EventListener successCallback = event -> {
-            logger.debug("atom creation successful, new atom URI is {}", atomURI);
-            bus.publish(new AtomCreatedEvent(atomURI, wonNodeUri, dataset, null));
-        };
-        EventListener failureCallback = event -> {
-            String textMessage = WonRdfUtils.MessageUtils
-                    .getTextMessage(((FailureResponseEvent) event).getFailureMessage());
-            logger.error("atom creation failed for atom URI {}, original message URI {}: {}", new Object[]{
-                    atomURI, ((FailureResponseEvent) event).getOriginalMessageURI(), textMessage});
-            EventBotActionUtils.removeFromList(ctx, atomURI, uriListName);
-//            botContextWrapper.removeURIJobURLRelation(atomURI);
-        };
-        EventBotActionUtils.makeAndSubscribeResponseListener(createAtomMessage, successCallback, failureCallback,
-                ctx);
-        logger.debug("registered listeners for response to message URI {}", createAtomMessage.getMessageURI());
-        ctx.getWonMessageSender().sendMessage(createAtomMessage);
-        logger.debug("atom creation message sent with message URI {}", createAtomMessage.getMessageURI());
-
-        return true;
     }
 }
