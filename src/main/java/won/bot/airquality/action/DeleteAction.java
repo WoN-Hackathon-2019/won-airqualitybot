@@ -36,6 +36,7 @@ public class DeleteAction extends AbstractDeleteAtomAction {
 
         WonMessage deleteAtomMessage = ctx.getWonMessageSender().prepareMessage(buildWonMessage(atomUri));
 
+        // for some reason this callback is never called
         EventListener successCallback = e -> {
             logger.info("atom deletion successful, URI was {}", atomUri);
             throw new IllegalStateException("yeah we did it!!!");
