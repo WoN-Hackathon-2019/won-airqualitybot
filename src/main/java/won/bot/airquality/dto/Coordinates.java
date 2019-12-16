@@ -10,4 +10,12 @@ import lombok.Setter;
 public class Coordinates {
     private Double latitude;
     private Double longitude;
+
+    @Override
+    public String toString() {
+        return "Coordinates{" +
+                "latitude=" + latitude +
+                ", longitude=" + longitude +
+                '}';
+    }
 }

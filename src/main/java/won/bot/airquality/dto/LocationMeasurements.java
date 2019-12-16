@@ -14,24 +14,19 @@ public class LocationMeasurements {
 
     private String location;
 
+    private Coordinates coordinates;
+
     private String city;
 
     private String country;
 
     private List<Measurement> measurements;
 
-    //private List<Double> geoCoordinates;
-
-    private Coordinates coordinates;
-
-    //private Coordinate latitude = geoCoordinates.getLatitude();
-
-    //private Coordinate longitude = geoCoordinates.getLongitude();
-
     @Override
     public String toString() {
         return "LocationMeasurements{" +
                 "location='" + location + '\'' +
+                ", coordinates=" + coordinates +
                 ", city='" + city + '\'' +
                 ", country='" + country + '\'' +
                 ", measurements=" + measurements +

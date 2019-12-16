@@ -23,8 +23,8 @@ public class AtomFactory {
     private AtomFactory() {
     }
 
-    private static final String AQ_DATA_TAG = "TEST1627_AirQualityData";
-    private static final String AQ_BOT_TAG = "TEST1627_AirQualityBot";
+    private static final String AQ_DATA_TAG = "AirQualityData";
+    private static final String AQ_BOT_TAG = "AirQualityBot";
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
 
     public static Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements, Map<String, Parameter> paramIdToParam) {
@@ -45,7 +45,6 @@ public class AtomFactory {
         addressNode.addProperty(AirQualitySchema.ADDR_LOCALITY, locationMeasurements.getLocation());
         locationNode.addProperty(AirQualitySchema.PLACE_ADDRESS, addressNode);
 
-        //locationNode.addProperty(AirQualitySchema.GEOCOORDINATES, locationMeasurements.getGeoCoordinates());
         Resource geoCoordinatesNode = model.createResource(AirQualitySchema.GEOCOORDINATES);
         geoCoordinatesNode.addProperty(AirQualitySchema.GEO_LATITUDE, String.valueOf(locationMeasurements.getCoordinates().getLatitude()));
         geoCoordinatesNode.addProperty(AirQualitySchema.GEO_LONGITUDE, String.valueOf(locationMeasurements.getCoordinates().getLongitude()));
