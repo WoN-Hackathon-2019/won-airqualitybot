@@ -71,6 +71,35 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, "air_quality_uri_list_name");
 
         // TODO actually use listeners to determine if the creation was successful or not
+        //------------------
+
+
+
+        // --> https://github.com/researchstudio-sat/spoco-edenred-bot/blob/master/src/main/java/won/bot/skeleton/action/CreateEdenredAtomAction.java Z.63ff
+        EventBus bus = ctx.getEventBus();
+        EventListener successCallback = new EventListener() {
+            @Override
+            public void onEvent(Event event) {
+                logger.debug("atom creation successful, new atom URI is {}", atomURI);
+                bus.publish(new AtomCreatedEvent(atomURI, wonNodeURI, atomDataset, null));
+                // TODO botContextWrapper.addEdenredAtom(edenredDataPoint, atomURI);
+            }
+        };
+        EventListener failureCallback = new EventListener() {
+            @Override
+            public void onEvent(Event event) {
+                String textMessage = WonRdfUtils.MessageUtils
+                        .getTextMessage(((FailureResponseEvent) event).getFailureMessage());
+                logger.error("atom creation failed for atom URI {}, original message URI {}: {}", atomURI,
+                        ((FailureResponseEvent) event).getOriginalMessageURI(), textMessage);
+                // TODO botContextWrapper.removeEden(edenredAtomToCreate);
+                EventBotActionUtils.removeFromList(ctx, atomURI, uriListName);
+            }
+        };
+
+
+
+        //--------------------
         // create listeners to react to events fired by the published command
         ctx.getEventBus().subscribe(
                 CreateAtomCommandResultEvent.class,
