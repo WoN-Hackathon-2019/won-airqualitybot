@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import won.bot.airquality.atom.AtomFactory;
 import won.bot.airquality.context.AirQualityBotContextWrapper;
 import won.bot.airquality.dto.LocationMeasurements;
+import won.bot.airquality.dto.Parameter;
 import won.bot.airquality.external.OpenAqApi;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
@@ -24,6 +25,9 @@ import won.bot.framework.eventbot.listener.impl.ActionOnFirstEventListener;
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class UpdateAirQualityAction extends AbstractCreateAtomAction {
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -45,20 +49,22 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         }
 
         List<LocationMeasurements> locations = this.openAqApi.fetchLatestMeasurements();
+        List<Parameter> parameters = this.openAqApi.fetchParameters();
 
         logger.info("Creating atoms...");
         for (LocationMeasurements locationMeasurements : locations.subList(0, 3)) { // TODO use entire list if in productive use
-            createAtomForLocationMeasurements(locationMeasurements);
+            createAtomForLocationMeasurements(locationMeasurements, parameters);
         }
     }
 
-    private void createAtomForLocationMeasurements(LocationMeasurements locationMeasurements) {
+    private void createAtomForLocationMeasurements(LocationMeasurements locationMeasurements, List<Parameter> parameters) {
         // Create a new atom URI
         EventListenerContext ctx = getEventListenerContext();
         URI wonNodeURI = ctx.getNodeURISource().getNodeURI();
         URI atomURI = ctx.getWonNodeInformationService().generateAtomURI(wonNodeURI);
 
-        Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements);
+        Map<String, Parameter> paramIdToParam = parameters.stream().collect(Collectors.toMap(Parameter::getId, Function.identity()));
+        Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements, paramIdToParam);
 
         CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, URI_LIST_NAME);
 

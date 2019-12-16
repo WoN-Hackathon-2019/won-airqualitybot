@@ -4,9 +4,11 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
 import won.bot.airquality.dto.LocationMeasurements;
+import won.bot.airquality.dto.Parameter;
 import won.protocol.util.DefaultAtomModelWrapper;
 
 import java.net.URI;
+import java.util.Map;
 
 public class AtomFactory {
 
@@ -16,7 +18,7 @@ public class AtomFactory {
     private static final String AQ_DATA_TAG = "AirQualityData";
     private static final String AQ_BOT_TAG = "AirQualityBot";
 
-    public static Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements) {
+    public static Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements, Map<String, Parameter> paramIdToParam) {
         DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
         atomWrapper.setTitle(String.format("%s; %s; %s; %s", AQ_DATA_TAG, locationMeasurements.getLocation(),
                 locationMeasurements.getCity(), locationMeasurements.getCountry()));
@@ -36,7 +38,10 @@ public class AtomFactory {
         locationMeasurements.getMeasurements().stream()
                 .map(measurement -> {
                     Resource measurementNode = locationNode.getModel().createResource(AirQualitySchema.MEASUREMENT);
-                    measurementNode.addProperty(AirQualitySchema.MEASURE_PARAM, measurement.getParameter());
+                    String paramId = measurement.getParameter();
+                    measurementNode.addProperty(AirQualitySchema.MEASURE_PARAM, paramId);
+                    measurementNode.addProperty(AirQualitySchema.MEASURE_PARAM_NAME,
+                            paramIdToParam.getOrDefault(paramId, Parameter.unknown(paramId)).getDescription());
                     measurementNode.addProperty(AirQualitySchema.MEASURE_VALUE, String.valueOf(measurement.getValue()));
                     measurementNode.addProperty(AirQualitySchema.MEASURE_UNIT, String.valueOf(measurement.getUnit()));
                     // TODO add timestamp of measurement
