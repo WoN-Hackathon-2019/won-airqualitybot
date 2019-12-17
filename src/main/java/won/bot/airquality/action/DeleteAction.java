@@ -41,7 +41,7 @@ public class DeleteAction extends AbstractDeleteAtomAction {
             logger.info("atom deletion successful, URI was {}", atomUri);
             throw new IllegalStateException("yeah we did it!!!");
         };
-        EventBotActionUtils.removeFromList(ctx, atomUri, uriListName); // this should be inside the sucess callback
+        EventBotActionUtils.removeFromList(ctx, atomUri, uriListName); // this should be inside the success callback
 
         EventListener failureCallback = e -> {
             FailureResponseEvent failureEvent = (FailureResponseEvent) e;
