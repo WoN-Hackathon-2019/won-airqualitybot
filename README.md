@@ -48,10 +48,10 @@ The name under which the bot is registered at the WoN-Node can be altered with `
 The parameters for the API from which the air-quality data is fetched is configured with `openaq.*`
 
 ### AQ-Bot Specifics
-Specific properties to configure the behaviour of this bot can be altered with `aqbot.*` (in resources/application.properties):
-With `aqbot.initialDelayMs`, you can specify after how many milliseconds the bot starts to generate atoms.
-With `aqbot.updateIntervalMs`, you can specify after how many milliseconds the bot starts to fetch new data, generates new atoms and deletes the old ones.
-With `aqbot.atom.uri.storage.directory`, you can set the path to the directory which holds the uris of the generated atoms.
+Specific properties to configure the behaviour of this bot can be altered with `aqbot.*` (in resources/application.properties):<br/>
+With `aqbot.initialDelayMs`, you can specify after how many milliseconds the bot starts to generate atoms.<br />
+With `aqbot.updateIntervalMs`, you can specify after how many milliseconds the bot starts to fetch new data, generates new atoms and deletes the old ones.<br/>
+With `aqbot.atom.uri.storage.directory`, you can set the path to the directory which holds the uris of the generated atoms.<br/>
 
 
 ## Team
