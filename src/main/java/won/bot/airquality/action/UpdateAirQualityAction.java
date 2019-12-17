@@ -9,6 +9,7 @@ import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.dto.Parameter;
 import won.bot.airquality.event.DeleteAtomEvent;
 import won.bot.airquality.external.OpenAqApi;
+import won.bot.airquality.model.AtomUriStorage;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.BaseEventBotAction;
 import won.bot.framework.eventbot.action.EventBotActionUtils;
@@ -25,22 +26,25 @@ import won.bot.framework.eventbot.listener.impl.ActionOnFirstEventListener;
 
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class UpdateAirQualityAction extends AbstractCreateAtomAction {
 
     public static final String URI_LIST_NAME = "air_quality_uri_list_name";
+
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final OpenAqApi openAqApi;
+    private final AtomUriStorage uriStorage;
 
-    public UpdateAirQualityAction(EventListenerContext eventListenerContext, OpenAqApi openAqApi) {
+    public UpdateAirQualityAction(EventListenerContext eventListenerContext, OpenAqApi openAqApi, AtomUriStorage uriStorage) {
         super(eventListenerContext);
         this.openAqApi = openAqApi;
+        this.uriStorage = uriStorage;
     }
 
     @Override
@@ -52,7 +56,9 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         }
         List<LocationMeasurements> locations = this.openAqApi.fetchLatestMeasurements();
         List<Parameter> parameters = this.openAqApi.fetchParameters();
-        ArrayList<URI> toDelete = new ArrayList<>(getEventListenerContext().getBotContext().getNamedAtomUriList(URI_LIST_NAME));
+
+        uriStorage.commit();
+        Set<URI> toDelete = uriStorage.getUris();
 
         logger.info("Creating atoms...");
         for (LocationMeasurements locationMeasurements : locations.subList(0, 3)) { // TODO use entire list if in productive use
@@ -84,7 +90,9 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
                             protected void doRun(Event event, EventListener executingListener) {
                                 if (event instanceof CreateAtomCommandResultEvent) {
                                     if (event instanceof CreateAtomCommandSuccessEvent) {
-                                        logger.info("Created Atom: {}", ((CreateAtomCommandSuccessEvent) event).getAtomURI());
+                                        CreateAtomCommandSuccessEvent successEvent = (CreateAtomCommandSuccessEvent) event;
+                                        logger.info("Created Atom: {}", successEvent.getAtomURI());
+                                        uriStorage.appendUri(successEvent.getAtomURI());
                                         return;
                                     } else if (event instanceof CreateAtomCommandFailureEvent) {
                                         logger.error("Failed to create atom with original URI: {}, event={}", ((CreateAtomCommandFailureEvent) event).getAtomUriBeforeCreation(), event);

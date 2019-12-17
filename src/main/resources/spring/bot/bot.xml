@@ -36,6 +36,7 @@
                 <constructor-arg name="apiUrl" value="${openaq.apiURL}"/>
             </bean>
         </property>
+        <property name="uriStorage" ref="atomUriStorage"/>
 
         <property name="trigger">
             <bean class="org.springframework.scheduling.support.PeriodicTrigger">
@@ -50,5 +51,9 @@
     <bean id="botContextWrapper" class="won.bot.airquality.context.AirQualityBotContextWrapper">
         <constructor-arg name="botContext" ref="${botContext.impl}"/>
         <constructor-arg name="botName" value="${bot.name}"/>
+    </bean>
+
+    <bean id="atomUriStorage" class="won.bot.airquality.model.AtomUriStorage" destroy-method="commit">
+        <constructor-arg name="uriStorageDirectory" value="${aqbot.atom.uri.storage.directory}"/>
     </bean>
 </beans>

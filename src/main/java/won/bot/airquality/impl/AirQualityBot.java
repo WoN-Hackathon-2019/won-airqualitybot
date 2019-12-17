@@ -10,6 +10,7 @@ import won.bot.airquality.dto.LocationMeasurements;
 import won.bot.airquality.dto.Parameter;
 import won.bot.airquality.event.DeleteAtomEvent;
 import won.bot.airquality.external.OpenAqApi;
+import won.bot.airquality.model.AtomUriStorage;
 import won.bot.framework.bot.base.EventBot;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.behaviour.ExecuteWonMessageCommandBehaviour;
@@ -29,6 +30,9 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
 
     @Setter
     private OpenAqApi openAqApi;
+
+    @Setter
+    private AtomUriStorage uriStorage;
 
     @Override
     public ServiceAtomBehaviour getServiceAtomBehaviour() {
@@ -56,8 +60,8 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
         serviceAtomBehaviour.activate();
 
         EventBus bus = getEventBus();
-        bus.subscribe(DeleteAtomEvent.class, new DeleteAction(ctx, UpdateAirQualityAction.URI_LIST_NAME));
-        bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi));
+        bus.subscribe(DeleteAtomEvent.class, new DeleteAction(ctx, UpdateAirQualityAction.URI_LIST_NAME, uriStorage));
+        bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi, uriStorage));
     }
 
     // TODO for testing purposes only, remove at some point

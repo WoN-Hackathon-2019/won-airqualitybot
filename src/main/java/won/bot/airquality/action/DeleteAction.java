@@ -3,6 +3,7 @@ package won.bot.airquality.action;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import won.bot.airquality.event.DeleteAtomEvent;
+import won.bot.airquality.model.AtomUriStorage;
 import won.bot.framework.eventbot.EventListenerContext;
 import won.bot.framework.eventbot.action.EventBotActionUtils;
 import won.bot.framework.eventbot.action.impl.atomlifecycle.AbstractDeleteAtomAction;
@@ -16,14 +17,14 @@ import java.lang.invoke.MethodHandles;
 import java.net.URI;
 
 public class DeleteAction extends AbstractDeleteAtomAction {
+
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    public DeleteAction(EventListenerContext eventListenerContext) {
-        super(eventListenerContext);
-    }
+    private final AtomUriStorage uriStorage;
 
-    public DeleteAction(EventListenerContext eventListenerContext, String uriListName) {
+    public DeleteAction(EventListenerContext eventListenerContext, String uriListName, AtomUriStorage uriStorage) {
         super(eventListenerContext, uriListName);
+        this.uriStorage = uriStorage;
     }
 
     @Override
@@ -41,7 +42,7 @@ public class DeleteAction extends AbstractDeleteAtomAction {
             logger.info("atom deletion successful, URI was {}", atomUri);
             throw new IllegalStateException("yeah we did it!!!");
         };
-        EventBotActionUtils.removeFromList(ctx, atomUri, uriListName); // this should be inside the success callback
+        uriStorage.deleteUri(atomUri);
 
         EventListener failureCallback = e -> {
             FailureResponseEvent failureEvent = (FailureResponseEvent) e;
