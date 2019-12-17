@@ -18,8 +18,5 @@ public class AirQualityBotApp {
         SpringApplication app = new SpringApplication(AirQualityBotApp.class);
         app.setWebEnvironment(false);
         app.run(args);
-        // ConfigurableApplicationContext applicationContext = app.run(args);
-        // Thread.sleep(5*60*1000);
-        // app.exit(applicationContext);
     }
 }
