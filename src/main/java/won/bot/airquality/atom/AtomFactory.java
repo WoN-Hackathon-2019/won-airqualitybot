@@ -29,9 +29,9 @@ public class AtomFactory {
 
     public static Dataset generateLocationMeasurementsAtomStructure(URI atomURI, LocationMeasurements locationMeasurements, Map<String, Parameter> paramIdToParam) {
         DefaultAtomModelWrapper atomWrapper = new DefaultAtomModelWrapper(atomURI);
-        atomWrapper.setTitle(String.format("%s; %s; %s; %s", AQ_DATA_TAG, locationMeasurements.getLocation(),
-                locationMeasurements.getCity(), locationMeasurements.getCountry())); // TODO remove "Leaze " from String
-        atomWrapper.setDescription(locationMeasurements.toString());
+        atomWrapper.setTitle(String.format("%s for %s, %s (%s); %s", AQ_DATA_TAG, locationMeasurements.getLocation(),
+                locationMeasurements.getCity(), locationMeasurements.getCountry(), locationMeasurements.getCoordinates())); // TODO remove "Leaze " from String
+        atomWrapper.setDescription("Automatically generated air quality data; data fetched from https://docs.openaq.org"); // atom description
         atomWrapper.addTag(AQ_DATA_TAG);
         atomWrapper.addTag(AQ_BOT_TAG);
 

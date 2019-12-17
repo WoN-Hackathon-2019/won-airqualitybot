@@ -8,14 +8,14 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Coordinates {
-    private Double latitude;
     private Double longitude;
+    private Double latitude;
 
     @Override
     public String toString() {
         return "Coordinates{" +
-                "latitude=" + latitude +
-                ", longitude=" + longitude +
+                "longitude=" + longitude +
+                ", latitude=" + latitude +
                 '}';
     }
 }
