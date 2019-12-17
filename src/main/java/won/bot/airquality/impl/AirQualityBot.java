@@ -29,6 +29,9 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
     private ServiceAtomBehaviour serviceAtomBehaviour;
 
     @Setter
+    private boolean limitedTestMode;
+
+    @Setter
     private OpenAqApi openAqApi;
 
     @Setter
@@ -54,14 +57,13 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
         ExecuteWonMessageCommandBehaviour wonMessageCommandBehaviour = new ExecuteWonMessageCommandBehaviour(ctx);
         wonMessageCommandBehaviour.activate();
 
-        // TODO what is this for? do we need this?
         // activate ServiceAtomBehaviour
         serviceAtomBehaviour = new ServiceAtomBehaviour(ctx);
         serviceAtomBehaviour.activate();
 
         EventBus bus = getEventBus();
         bus.subscribe(DeleteAtomEvent.class, new DeleteAction(ctx, UpdateAirQualityAction.URI_LIST_NAME, uriStorage));
-        bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi, uriStorage));
+        bus.subscribe(ActEvent.class, new UpdateAirQualityAction(ctx, openAqApi, uriStorage, limitedTestMode));
     }
 
     // TODO for testing purposes only, remove at some point
@@ -71,6 +73,9 @@ public class AirQualityBot extends EventBot implements ServiceAtomExtension {
 
         System.out.println(separator + "\n" + separator);
         List<LocationMeasurements> latestMeasurements = openAqApi.fetchLatestMeasurements();
+        if (latestMeasurements.size() < printCount) {
+            printCount = latestMeasurements.size();
+        }
         System.out.println("Fetched Measurements (first " + printCount + " Elements printed):");
         for (int i = 0; i < printCount; i++) {
             System.out.println(latestMeasurements.get(i).toString());

@@ -34,8 +34,11 @@
         <property name="openAqApi">
             <bean class="won.bot.airquality.external.OpenAqApi">
                 <constructor-arg name="apiUrl" value="${openaq.apiURL}"/>
+                <constructor-arg name="countryCode" value="${openaq.countryCode:${openaq.allCountriesCode}}"/>
+                <constructor-arg name="allCountriesCode" value="${openaq.allCountriesCode}"/>
             </bean>
         </property>
+        <property name="limitedTestMode" value="${aqbot.limitedTestMode}"/>
         <property name="uriStorage" ref="atomUriStorage"/>
 
         <property name="trigger">

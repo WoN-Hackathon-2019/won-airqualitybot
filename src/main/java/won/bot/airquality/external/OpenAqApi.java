@@ -30,19 +30,28 @@ public class OpenAqApi {
 
     private static final String LIST_RESOURCE_DATA_KEY = "results";
 
-    private static final String AT_COUNTRY_CODE = "AT";
     private static final String DEFAULT_LIMIT = "500";
 
     private final String apiUrl;
+    private final String countryCode;
+    private final String allCountriesCode;
 
-    public OpenAqApi(String apiUrl) {
+    public OpenAqApi(String apiUrl, String countryCode, String allCountriesCode) {
         this.apiUrl = apiUrl;
+        this.countryCode = countryCode;
+        this.allCountriesCode = allCountriesCode;
+    }
+
+    public String getApiUrl() {
+        return this.apiUrl;
     }
 
     public List<LocationMeasurements> fetchLatestMeasurements() {
-        List<GetParam> params = Arrays.asList(
-                new GetParam(COUNTRY_GET_PARAM, AT_COUNTRY_CODE),
-                new GetParam(LIMIT_GET_PARAM, DEFAULT_LIMIT));
+        List<GetParam> params = new ArrayList<>();
+        if (!(countryCode == null || countryCode.equals("") || countryCode.equals(allCountriesCode))) {
+            params.add(new GetParam(COUNTRY_GET_PARAM, countryCode));
+        }
+        params.add(new GetParam(LIMIT_GET_PARAM, DEFAULT_LIMIT));
         HttpGet request = createGetRequest(LATEST_ENDPOINT, params);
         String responseString = dispatchGetRequest(request);
         return Arrays.asList(parseResponseString(responseString, LocationMeasurements[].class, LIST_RESOURCE_DATA_KEY));

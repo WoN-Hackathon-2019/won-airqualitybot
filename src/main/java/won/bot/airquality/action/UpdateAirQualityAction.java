@@ -35,16 +35,22 @@ import java.util.stream.Collectors;
 public class UpdateAirQualityAction extends AbstractCreateAtomAction {
 
     public static final String URI_LIST_NAME = "air_quality_uri_list_name";
+    public static final int TEST_MODE_LIMIT = 3;
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
     private final OpenAqApi openAqApi;
     private final AtomUriStorage uriStorage;
+    private final boolean limitedTestMode;
 
-    public UpdateAirQualityAction(EventListenerContext eventListenerContext, OpenAqApi openAqApi, AtomUriStorage uriStorage) {
+    public UpdateAirQualityAction(EventListenerContext eventListenerContext,
+                                  OpenAqApi openAqApi,
+                                  AtomUriStorage uriStorage,
+                                  boolean limitedTestMode) {
         super(eventListenerContext);
         this.openAqApi = openAqApi;
         this.uriStorage = uriStorage;
+        this.limitedTestMode = limitedTestMode;
     }
 
     @Override
@@ -57,14 +63,21 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         List<LocationMeasurements> locations = this.openAqApi.fetchLatestMeasurements();
         List<Parameter> parameters = this.openAqApi.fetchParameters();
 
+        if (limitedTestMode) {
+            int limit = TEST_MODE_LIMIT;
+            if (locations.size() < limit) {
+                limit = locations.size();
+            }
+            logger.info("Limiting the atoms to be created to {}", limit);
+            locations = locations.subList(0, limit);
+        }
+
         uriStorage.commit();
         Set<URI> toDelete = uriStorage.getUris();
 
         logger.info("Creating atoms...");
-        for (LocationMeasurements locationMeasurements : locations.subList(0, 3)) { // TODO use entire list if in productive use
-            createAtomForLocationMeasurements(locationMeasurements, parameters);
-        }
-
+        locations.forEach(location -> createAtomForLocationMeasurements(location, parameters));
+        logger.info("Deleting old atoms...");
         toDelete.forEach(uri -> ctx.getEventBus().publish(new DeleteAtomEvent(uri)));
     }
 
@@ -75,7 +88,8 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
         URI atomURI = ctx.getWonNodeInformationService().generateAtomURI(wonNodeURI);
 
         Map<String, Parameter> paramIdToParam = parameters.stream().collect(Collectors.toMap(Parameter::getId, Function.identity()));
-        Dataset atomDataset = AtomFactory.generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements, paramIdToParam);
+        Dataset atomDataset = AtomFactory.
+                generateLocationMeasurementsAtomStructure(atomURI, locationMeasurements, paramIdToParam, openAqApi.getApiUrl());
 
         CreateAtomCommandEvent createCommand = new CreateAtomCommandEvent(atomDataset, URI_LIST_NAME);
 
@@ -97,7 +111,7 @@ public class UpdateAirQualityAction extends AbstractCreateAtomAction {
                                     } else if (event instanceof CreateAtomCommandFailureEvent) {
                                         logger.error("Failed to create atom with original URI: {}, event={}", ((CreateAtomCommandFailureEvent) event).getAtomUriBeforeCreation(), event);
                                         EventBotActionUtils.removeFromList(ctx, atomURI, uriListName);
-                                        return; // TODO throw exception?
+                                        return;
                                     }
                                 }
                                 throw new IllegalStateException("Could not handle CreateAtomCommandResultEvent");
